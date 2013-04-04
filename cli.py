@@ -1,8 +1,12 @@
+from _mysql import result
 from pprint import pprint
 import sys
 import os
 import itertools
+import pymongo
 import comment_def
+import config
+from elastic_search import ESIndex
 
 def parseCommandLineArguments(tagDictionary={"-r": "recursive"}, allArguments=sys.argv):
     '''For now just allow the recursive tag, and assume every passed
@@ -74,16 +78,44 @@ def mapFilesToTypes(allFiles):
 def getFileEnding(fileName, delimiter="."):
     return fileName.rpartition(delimiter)
 
-REPOS_PATH = "/repo/github"
+def parse_repo(path, repo_name):
+    allFiles = getFiles(parseCommandLineArguments(allArguments=["cli.py", path, "-r"]))
 
-allFiles = getFiles(parseCommandLineArguments(allArguments=["cli.py", REPOS_PATH, "-r"]))
+    results = []
 
-# pprint(types_counter)
+    for type in allFiles:
+        for file in allFiles[type]:
+            comments = c.parseAllComments(file, type)
+            if len(comments) != 0:
+                results.append(dict(module_name=repo_name, file_name=file, type=type, commets=comments))
 
-results = dict()
+    return results
 
-for type in allFiles:
-    for file in allFiles[type]:
-        comments = c.parseAllComments(file, type)
-        if len(comments) != 0:
-            results[file] = comments
+def main():
+    mongoConn = pymongo.MongoClient(config.DB_HOST, 27017)
+    db = mongoConn[config.DB_NAME]
+    modules_collection = db['modules']
+    modules = modules_collection.find().limit(5)
+
+    es = ESIndex()
+
+    count = modules.count()
+    i = 0
+    for module in modules:
+        id = dict(user=module['owner'], repo=module['module_name'])
+        i += 1
+        repo_name = '%(user)s/%(repo)s' % id
+        print '(%d/%d)' % (i, count), repo_name
+        path = os.path.join(config.GITHUB_REPOS_CLONE_PATH, repo_name)
+        if os.path.exists(path):
+            results = parse_repo(path, repo_name)
+            es.add_to_index(results)
+            sys.stdout.write("Done!\n")
+            sys.stdout.flush()
+        else:
+            print 'Repo not found'
+
+    es.print_all()
+
+if __name__ == "__main__":
+    main()

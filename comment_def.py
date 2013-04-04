@@ -38,20 +38,25 @@ class CommentDictionary:
                 # parse Inline Comments
                 for line in corpus:
                     # all_file += line
-                    res = lineRegex.match(line)
-                    if res:
-                        c = res.group(2).strip()
-                        if len(c) != 0:
-                            allComments.append(res.group(2).strip())
+                    result = lineRegex.match(line)
+                    if result:
+                        if result.lastindex >= 2:
+                            gr = result.group(2)
+                            if gr:
+                                c = gr.strip()
+                                if len(c) != 0:
+                                    allComments.append(c)
 
                 corpus.seek(0)
                 # parse Block Comments
                 results = blockRegex.finditer(corpus.read())
                 for result in results:
-                    if result.group(2):
-                        res = result.group(2).replace('\n', ' ').strip()
-                        if len(res) != 0:
-                            allComments.append(res)
+                    if result.lastindex >= 2:
+                        gr = result.group(2)
+                        if gr:
+                            res = gr.replace('\n', ' ').strip()
+                            if len(res) != 0:
+                                allComments.append(res)
 
         return allComments
 

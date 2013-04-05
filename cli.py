@@ -32,8 +32,14 @@ def parseCommandLineArguments(tagDictionary={"-r": "recursive"}, allArguments=sy
     return directoryDictionary
 
 c = comment_def.CommentDictionary()
+files_filter = []
+for exp in c.reference.keys():
+    files_filter.append(exp)
+
+print files_filter
 
 ignore_dirs = ['.git', '.idea']
+
 def filter_dir(dir):
     dirname = os.path.split(dir)[-1]
     return dirname not in ignore_dirs
@@ -42,12 +48,10 @@ def getFiles(directoryDictionary):
     '''Takes the dictionary of filepaths and tags and returns a list of
     all files in the associated directories'''
     # path = os.path.abspath(__file__).rstrip('cli.py')
-    files_filter = []
     allFiles = dict()
-    for exp in c.reference.keys():
-        files_filter.append(exp)
+
+    for exp in files_filter:
         allFiles[exp] = []
-    print files_filter
 
     for path in directoryDictionary:
         # localPath = path + key
@@ -67,7 +71,6 @@ def getFiles(directoryDictionary):
 
     return allFiles
 
-
 def mapFilesToTypes(allFiles):
     filesToTypes = {}
     for path in allFiles:
@@ -78,25 +81,33 @@ def mapFilesToTypes(allFiles):
 def getFileEnding(fileName, delimiter="."):
     return fileName.rpartition(delimiter)
 
-def parse_repo(path):
+def parse_repo(path, callback = None):
     os.chdir(path)
     allFiles = getFiles(parseCommandLineArguments(allArguments=["cli.py", '.', "-r"]))
 
     results = []
-
+    i = 0
     for file_type in allFiles:
         for file_name in allFiles[file_type]:
             comments = c.parseAllComments(file_name, file_type)
             if len(comments) != 0:
                 results.append(dict(file_name=file_name, file_type=file_type, comments=comments))
-
-    return results
+                i += 1
+                if callback and i % 20 == 0:
+                    callback(results)
+                    print '.',
+                    results = []
+    if callback:
+        callback(results)
+        return i
+    else:
+        return results
 
 def main():
     mongoConn = pymongo.MongoClient(config.DB_HOST, 27017)
     db = mongoConn[config.DB_NAME]
     modules_collection = db['modules']
-    modules = modules_collection.find().limit(12)
+    modules = modules_collection.find().limit(14)
 
     es = ESIndex()
 
@@ -109,8 +120,10 @@ def main():
         print '(%d/%d)' % (i, count), repo_name
         path = os.path.join(config.GITHUB_REPOS_CLONE_PATH, repo_name)
         if os.path.exists(path):
-            results = parse_repo(path)
-            es.add_to_index(results, module)
+            add_callback = lambda files: es.add_to_index(files, module, bulk=True)
+            results = parse_repo(path, add_callback)
+            print '\n', results
+            # es.add_to_index(results, module)
             sys.stdout.write("Done!\n")
             sys.stdout.flush()
         else:

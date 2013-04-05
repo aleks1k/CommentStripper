@@ -1,13 +1,17 @@
 #this is my initial idea for how to specify the comment syntax for each language
 #this will allow us to look up in the dictionary by file extension
 #feedback is welcome
+import StringIO
+import codecs
 import re
 
 
 class CommentDef:
     def __init__(self, blockRegex, lineRegex, blockContinuation=""):
-        self.blockRegex = blockRegex
-        self.lineRegex = lineRegex
+        self.blockRegexStr = blockRegex
+        self.lineRegexStr = lineRegex
+        self.blockRegex = re.compile(self.blockRegexStr)
+        self.lineRegex = re.compile(self.lineRegexStr)
         self.blockContinuation = blockContinuation
 
 
@@ -30,26 +34,38 @@ class CommentDictionary:
 
     def parseAllComments(self, path, type):
         allComments = []
+        buff_limit = 1024 * 1024
         if type in self.reference:
-            lineRegex = re.compile(self.reference[type].lineRegex)
-            blockRegex = re.compile(self.reference[type].blockRegex)
-            with open(path, 'r') as corpus:
-                # all_file = ''
+            lineRegex = self.reference[type].lineRegex
+            blockRegex = self.reference[type].blockRegex
+            with codecs.open(path, 'r', 'utf-8', errors='ignore') as corpus:
+                file_buff = StringIO.StringIO()
+                buff_size = 0
                 # parse Inline Comments
                 for line in corpus:
-                    # all_file += line
-                    result = lineRegex.match(line)
-                    if result:
-                        if result.lastindex >= 2:
-                            gr = result.group(2)
-                            if gr:
-                                c = gr.strip()
-                                if len(c) != 0:
-                                    allComments.append(c)
+                    line_size = len(line)
+                    if line_size > 2:
+                        if buff_size < buff_limit:
+                            file_buff.write(line)
+                            buff_size += line_size
+                        result = lineRegex.match(line)
+                        if result:
+                            if result.lastindex >= 2:
+                                gr = result.group(2)
+                                if gr:
+                                    c = gr.strip()
+                                    if len(c) != 0:
+                                        allComments.append(c)
 
-                corpus.seek(0)
+                # Second time read file from buffer
+                if buff_size < buff_limit:
+                    file_buff.seek(0)
+                    buff = file_buff
+                else:
+                    corpus.seek(0)
+                    buff = corpus
                 # parse Block Comments
-                results = blockRegex.finditer(corpus.read())
+                results = blockRegex.finditer(buff.read())
                 for result in results:
                     if result.lastindex >= 2:
                         gr = result.group(2)

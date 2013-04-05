@@ -17,8 +17,8 @@ class ESIndex():
     indexname = 'comments-index'
     doc_type = 'module'
     def __init__(self):
-        self.conn = ES('127.0.0.1:9200') # Use HTTP
-
+        # self.conn = ES('127.0.0.1:9200') # Use HTTP
+        self.conn = ES() # Defaults to connecting to the server at '127.0.0.1:9500'
         self.conn.indices.delete_index(self.indexname)
         self.conn.indices.create_index(self.indexname)
 
@@ -51,14 +51,14 @@ class ESIndex():
         }
         self.conn.indices.put_mapping(self.doc_type, {'properties':mapping}, [self.indexname])
 
-    def add_to_index(self, docs, module_info):
+    def add_to_index(self, docs, module_info, bulk=False):
         for d in docs:
             for field in ['module_id', 'owner', 'module_name', 'description']:
                 if field == 'module_id':
                     d[field] = str(module_info['_id'])
                 else:
                     d[field] = module_info[field]
-            self.conn.index(d, self.indexname, self.doc_type)
+            self.conn.index(d, self.indexname, self.doc_type, bulk=bulk)
         self.conn.indices.refresh(self.indexname)
 
     def print_all(self):

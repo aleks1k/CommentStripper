@@ -17,60 +17,78 @@ class CommentDef:
 
 class CommentDictionary:
     def __init__(self):
-        cstyle = CommentDef('(/\*)(.|\r|\n)*?(?=(\*/))', '([/]{2})(.*)', "*")
-        python = CommentDef('([\']{3})([.|\r|\n]*?)(?=([\']{3}))', '(#)+(.*)')
-        perl = CommentDef('(=begin)([.|\r|\n]*?)(?=(=cut))', '(#)+(.*)')
-        ruby = CommentDef('(=begin)([.|\r|\n]*?)(?=(=end))', '(#)+(.*)')
-        lisp = CommentDef('(#|)([.|\r|\n]*?)(?=(|#))', '(;)+(.*)')
-        text = CommentDef('', '')
+        cstyle = CommentDef(r'(/\*)((.|[\r\n])*?)(?=\*/)', r'([/]{2})(.*)', "*")
+        python = CommentDef(r'([\']{3})([.|\r|\n]*?)(?=([\']{3}))', r'(#)+(.*)')
+        perl = CommentDef(r'(=begin)([.|\r|\n]*?)(?=(=cut))', r'(#)+(.*)')
+        ruby = CommentDef(r'(=begin)([.|\r|\n]*?)(?=(=end))', r'(#)+(.*)')
+        lisp = CommentDef(r'(#|)([.|\r|\n]*?)(?=(|#))', r'(;)+(.*)')
+        # text = CommentDef(r'', r'')
         #All block comment should be indicated such that the closing
         #element of the comment is in a lookahead assertion to allow
         #for nested comments
 
-        self.reference = {'c': cstyle, 'cpp': cstyle, 'cs': cstyle,
-                          'java': cstyle, 'js': cstyle, 'py': python,
-                          'pl': perl, 'rb': ruby, 'lisp': lisp, 'scm': lisp,
-                          'txt': text}
+        style_ext = [
+            (['c', 'js', 'h', 'cc', 'cpp', 'hpp', 'cs', 'java', 'as', 'd', 'go', 'scala',
+              'php', 'phtml', 'php4', 'php3', 'php5', 'phps'], cstyle),
+            (['md', 'txt'], None) # text
+        ]
+
+        self.reference = {
+            'py': python,
+            'pl': perl,
+            'rb': ruby,
+            'lisp': lisp,
+            'scm': lisp,
+            }
+
+        for s in style_ext:
+            for ext in s[0]:
+                self.reference[ext] = s[1]
+
 
     def parseAllComments(self, path, type):
         allComments = []
         buff_limit = 1024 * 1024
         if type in self.reference:
-            lineRegex = self.reference[type].lineRegex
-            blockRegex = self.reference[type].blockRegex
-            with codecs.open(path, 'r', 'utf-8', errors='ignore') as corpus:
-                file_buff = StringIO.StringIO()
-                buff_size = 0
-                # parse Inline Comments
-                for line in corpus:
-                    line_size = len(line)
-                    if line_size > 2:
-                        if buff_size < buff_limit:
-                            file_buff.write(line)
-                            buff_size += line_size
-                        result = lineRegex.match(line)
-                        if result:
-                            if result.lastindex >= 2:
-                                gr = result.group(2)
-                                if gr:
-                                    c = gr.strip()
-                                    if len(c) != 0:
-                                        allComments.append(c)
+            comdef = self.reference[type]
+            if comdef == None:
+                with codecs.open(path, 'r', 'utf-8', errors='ignore') as corpus:
+                    text_str = corpus.read()#.replace('\n', ' ')
+                    allComments.append(text_str)
+            else:
+                lineRegex = comdef.lineRegex
+                blockRegex = comdef.blockRegex
+                with codecs.open(path, 'r', 'utf-8', errors='ignore') as corpus:
+                    file_buff = StringIO.StringIO()
+                    buff_size = 0
+                    # parse Inline Comments
+                    for line in corpus:
+                        line_size = len(line)
+                        if line_size > 2:
+                            if buff_size < buff_limit:
+                                file_buff.write(line)
+                                buff_size += line_size
+                            result = lineRegex.match(line)
+                            if result:
+                                if result.lastindex >= 2:
+                                    gr = result.group(2)
+                                    if gr:
+                                        c = gr.strip()
+                                        if len(c) != 0:
+                                            allComments.append(c)
 
-                # Second time read file from buffer
-                if buff_size < buff_limit:
-                    file_buff.seek(0)
-                    buff = file_buff
-                else:
-                    corpus.seek(0)
-                    buff = corpus
-                # parse Block Comments
-                results = blockRegex.finditer(buff.read())
-                for result in results:
-                    if result.lastindex >= 2:
-                        gr = result.group(2)
-                        if gr:
-                            res = gr.replace('\n', ' ').strip()
+                    # Second time read file from buffer
+                    if buff_size < buff_limit:
+                        file_buff.seek(0)
+                        buff = file_buff
+                    else:
+                        corpus.seek(0)
+                        buff = corpus
+                    # parse Block Comments
+                    results = blockRegex.finditer(buff.read())
+                    for result in results:
+                        if result.lastindex >= 2:
+                            res = result.group(2)
                             if len(res) != 0:
                                 allComments.append(res)
 

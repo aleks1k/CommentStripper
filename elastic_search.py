@@ -19,7 +19,7 @@ class ESIndex():
     def __init__(self):
         # self.conn = ES('127.0.0.1:9200') # Use HTTP
         self.conn = ES() # Defaults to connecting to the server at '127.0.0.1:9500'
-        self.conn.indices.delete_index(self.indexname)
+        self.conn.indices.delete_index_if_exists(self.indexname)
         self.conn.indices.create_index(self.indexname)
 
         #module_name=repo_name, file_name=file, type=type, commets=comments

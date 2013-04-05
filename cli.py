@@ -1,4 +1,3 @@
-from _mysql import result
 from pprint import pprint
 import sys
 import os
@@ -40,6 +39,14 @@ print files_filter
 
 ignore_dirs = ['.git', '.idea']
 
+ext_stat = dict()
+
+def add_ext(ext):
+    if ext in ext_stat.keys():
+        ext_stat[ext] += 1
+    else:
+        ext_stat[ext] = 1
+
 def filter_dir(dir):
     dirname = os.path.split(dir)[-1]
     return dirname not in ignore_dirs
@@ -60,7 +67,8 @@ def getFiles(directoryDictionary):
                 dirs[:] = filter(filter_dir, dirs)
                 if files != []:
                     for file in files:
-                        ext = os.path.splitext(file)[1][1:]
+                        ext = os.path.splitext(file)[1][1:].lower()
+                        add_ext(ext)
                         if ext in files_filter:
                             allFiles[ext].append(os.path.join(current, file))
         # else:
@@ -107,7 +115,7 @@ def main():
     mongoConn = pymongo.MongoClient(config.DB_HOST, 27017)
     db = mongoConn[config.DB_NAME]
     modules_collection = db['modules']
-    modules = modules_collection.find().limit(14)
+    modules = modules_collection.find()
 
     es = ESIndex()
 
@@ -129,7 +137,15 @@ def main():
         else:
             print 'Repo not found'
 
-    es.print_all()
+    ext_list = []
+    for (ext, count) in ext_stat.items():
+        ext_list.append((ext, count))
+
+    pprint(sorted(ext_list, key=lambda x: x[1], reverse=True))
+
+    # pprint(ext_stat)
+
+    # es.print_all()
 
 if __name__ == "__main__":
     main()

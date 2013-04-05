@@ -78,16 +78,17 @@ def mapFilesToTypes(allFiles):
 def getFileEnding(fileName, delimiter="."):
     return fileName.rpartition(delimiter)
 
-def parse_repo(path, repo_name):
-    allFiles = getFiles(parseCommandLineArguments(allArguments=["cli.py", path, "-r"]))
+def parse_repo(path):
+    os.chdir(path)
+    allFiles = getFiles(parseCommandLineArguments(allArguments=["cli.py", '.', "-r"]))
 
     results = []
 
-    for type in allFiles:
-        for file in allFiles[type]:
-            comments = c.parseAllComments(file, type)
+    for file_type in allFiles:
+        for file_name in allFiles[file_type]:
+            comments = c.parseAllComments(file_name, file_type)
             if len(comments) != 0:
-                results.append(dict(module_name=repo_name, file_name=file, type=type, commets=comments))
+                results.append(dict(file_name=file_name, file_type=file_type, comments=comments))
 
     return results
 
@@ -95,7 +96,7 @@ def main():
     mongoConn = pymongo.MongoClient(config.DB_HOST, 27017)
     db = mongoConn[config.DB_NAME]
     modules_collection = db['modules']
-    modules = modules_collection.find().limit(5)
+    modules = modules_collection.find().limit(12)
 
     es = ESIndex()
 
@@ -108,8 +109,8 @@ def main():
         print '(%d/%d)' % (i, count), repo_name
         path = os.path.join(config.GITHUB_REPOS_CLONE_PATH, repo_name)
         if os.path.exists(path):
-            results = parse_repo(path, repo_name)
-            es.add_to_index(results)
+            results = parse_repo(path)
+            es.add_to_index(results, module)
             sys.stdout.write("Done!\n")
             sys.stdout.flush()
         else:

@@ -69,8 +69,10 @@ def getFiles(directoryDictionary):
                     for file in files:
                         ext = os.path.splitext(file)[1][1:].lower()
                         add_ext(ext)
-                        if ext in files_filter:
-                            allFiles[ext].append(os.path.join(current, file))
+                        # if ext in files_filter:
+                        if ext not in allFiles:
+                            allFiles[ext] = []
+                        allFiles[ext].append(os.path.join(current, file))
         # else:
         #     for (current, dirs, files) in os.walk(path):
         #         if files != []:
@@ -92,7 +94,6 @@ def getFileEnding(fileName, delimiter="."):
 def parse_repo(path, callback = None):
     os.chdir(path)
     allFiles = getFiles(parseCommandLineArguments(allArguments=["cli.py", '.', "-r"]))
-
     results = []
     i = 0
     for file_type in allFiles:

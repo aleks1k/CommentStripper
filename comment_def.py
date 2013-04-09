@@ -3,9 +3,11 @@
 #feedback is welcome
 import StringIO
 import codecs
+import multiprocessing
 import os
 import re
 from nanorc import nanorc
+import thread_call
 
 
 class CommentDef:
@@ -61,50 +63,58 @@ class CommentDictionary:
                 for b in drc['block_pattern']:
                     rc['block_regex'].append(re.compile(b))
 
-    buff_limit = 512 * 1024
+    # @staticmethod
+    # def parseFile(path, lineRegex=None, blockRegex = None):
+    #     buff_limit = 512 * 1024
+    #     allComments = []
+    #     # if os.path.getsize(path) > self.buff_limit:
+    #     #     return []
+    #     with codecs.open(path, 'r', 'utf-8', errors='ignore') as corpus:
+    #         if blockRegex:
+    #             file_buff = StringIO.StringIO()
+    #             buff_size = 0
+    #         if lineRegex:
+    #             # parse Inline Comments
+    #             for line in corpus:
+    #                 line_size = len(line)
+    #                 if line_size > 2:
+    #                     if blockRegex and buff_size < buff_limit:
+    #                         file_buff.write(line)
+    #                         buff_size += line_size
+    #                     result = lineRegex.match(line)
+    #                     if result:
+    #                         if result.lastindex >= 2:
+    #                             gr = result.group(2)
+    #                             if gr:
+    #                                 c = gr.strip()
+    #                                 if len(c) != 0:
+    #                                     allComments.append(c)
+    #
+    #         if blockRegex:
+    #             # Second time read file from buffer
+    #             if buff_size < buff_limit and lineRegex:
+    #                 file_buff.seek(0)
+    #                 buff = file_buff
+    #             else:
+    #                 corpus.seek(0)
+    #                 buff = corpus
+    #                 # parse Block Comments
+    #             results = blockRegex.finditer(buff.read())
+    #             for result in results:
+    #                 if result.lastindex >= 2:
+    #                     res = result.group(2)
+    #                     if len(res) != 0:
+    #                         allComments.append(res)
+    #
+    #     return allComments
+    #
+    # @staticmethod
+    # def parseFile_(path, lineRegex=None, blockRegex=None):
+    #     CommentDictionary.parseFile(path, re.compile(lineRegex), re.compile(blockRegex))
 
-    def parseFile(self, path, lineRegex=None, blockRegex = None):
-        allComments = []
-        if os.path.getsize(path) > self.buff_limit:
-            return []
-        with codecs.open(path, 'r', 'utf-8', errors='ignore') as corpus:
-            if blockRegex:
-                file_buff = StringIO.StringIO()
-                buff_size = 0
-            if lineRegex:
-                # parse Inline Comments
-                for line in corpus:
-                    line_size = len(line)
-                    if line_size > 2:
-                        if blockRegex and buff_size < self.buff_limit:
-                            file_buff.write(line)
-                            buff_size += line_size
-                        result = lineRegex.match(line)
-                        if result:
-                            if result.lastindex >= 2:
-                                gr = result.group(2)
-                                if gr:
-                                    c = gr.strip()
-                                    if len(c) != 0:
-                                        allComments.append(c)
-
-            if blockRegex:
-                # Second time read file from buffer
-                if buff_size < self.buff_limit and lineRegex:
-                    file_buff.seek(0)
-                    buff = file_buff
-                else:
-                    corpus.seek(0)
-                    buff = corpus
-                    # parse Block Comments
-                results = blockRegex.finditer(buff.read())
-                for result in results:
-                    if result.lastindex >= 2:
-                        res = result.group(2)
-                        if len(res) != 0:
-                            allComments.append(res)
-
-        return allComments
+    @staticmethod
+    def parseFileInThread(path, lineRegex=None, blockRegex=None):
+        return thread_call.parseFileInProcess(path, lineRegex, blockRegex)
 
     def parseAllComments(self, path, type):
         allComments = []
@@ -115,7 +125,7 @@ class CommentDictionary:
                     text_str = corpus.read()#.replace('\n', ' ')
                     allComments.append(text_str)
             else:
-                allComments = self.parseFile(path, comdef.lineRegex, comdef.blockRegex)
+                allComments = self.parseFileInThread(path, comdef.lineRegex, comdef.blockRegex)
         else:
             parsed = False
             for drc in self.nanorc:
@@ -132,7 +142,7 @@ class CommentDictionary:
                             else:
                                 blockRegex = None
                             if lineRegex or blockRegex:
-                                allComments.extend(self.parseFile(path, lineRegex, blockRegex))
+                                allComments.extend(self.parseFileInThread(path, lineRegex, blockRegex))
                             else:
                                 break
                             i += 1
@@ -176,8 +186,10 @@ class CommentDictionary:
 
 def test_big_file():
     bigcss = 'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\second.css'
+    smallcss = 'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\fourth.css'
     c = CommentDictionary()
-    c.parseFile(bigcss, re.compile('([/]{2})(.*)'), re.compile(r'(/\*)((.|\r|\n)*?)(?=\*/)'))
+    print c.parseFileInThread(bigcss, re.compile(r'([/]{2})(.*)'), re.compile(r'(/\*)((.|\r|\n)*?)(?=\*/)'))
+    print c.parseFileInThread(smallcss, re.compile(r'([/]{2})(.*)'), re.compile(r'(/\*)((.|\r|\n)*?)(?=\*/)'))
 
 def main():
     test_big_file()

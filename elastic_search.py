@@ -19,6 +19,8 @@ class ESIndex():
     def __init__(self):
         # self.conn = ES('127.0.0.1:9200') # Use HTTP
         self.conn = ES() # Defaults to connecting to the server at '127.0.0.1:9500'
+
+    def create_index(self):
         self.conn.indices.delete_index_if_exists(self.indexname)
         self.conn.indices.create_index(self.indexname)
 
@@ -59,7 +61,8 @@ class ESIndex():
                 else:
                     d[field] = module_info[field]
             self.conn.index(d, self.indexname, self.doc_type, bulk=bulk)
-        self.conn.indices.refresh(self.indexname)
+        if bulk:
+            self.conn.indices.refresh(self.indexname)
 
     def print_all(self):
         model = generate_model(self.indexname, self.doc_type)

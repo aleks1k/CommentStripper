@@ -63,59 +63,55 @@ class CommentDictionary:
                 for b in drc['block_pattern']:
                     rc['block_regex'].append(re.compile(b))
 
-    # @staticmethod
-    # def parseFile(path, lineRegex=None, blockRegex = None):
-    #     buff_limit = 512 * 1024
-    #     allComments = []
-    #     # if os.path.getsize(path) > self.buff_limit:
-    #     #     return []
-    #     with codecs.open(path, 'r', 'utf-8', errors='ignore') as corpus:
-    #         if blockRegex:
-    #             file_buff = StringIO.StringIO()
-    #             buff_size = 0
-    #         if lineRegex:
-    #             # parse Inline Comments
-    #             for line in corpus:
-    #                 line_size = len(line)
-    #                 if line_size > 2:
-    #                     if blockRegex and buff_size < buff_limit:
-    #                         file_buff.write(line)
-    #                         buff_size += line_size
-    #                     result = lineRegex.match(line)
-    #                     if result:
-    #                         if result.lastindex >= 2:
-    #                             gr = result.group(2)
-    #                             if gr:
-    #                                 c = gr.strip()
-    #                                 if len(c) != 0:
-    #                                     allComments.append(c)
-    #
-    #         if blockRegex:
-    #             # Second time read file from buffer
-    #             if buff_size < buff_limit and lineRegex:
-    #                 file_buff.seek(0)
-    #                 buff = file_buff
-    #             else:
-    #                 corpus.seek(0)
-    #                 buff = corpus
-    #                 # parse Block Comments
-    #             results = blockRegex.finditer(buff.read())
-    #             for result in results:
-    #                 if result.lastindex >= 2:
-    #                     res = result.group(2)
-    #                     if len(res) != 0:
-    #                         allComments.append(res)
-    #
-    #     return allComments
-    #
-    # @staticmethod
-    # def parseFile_(path, lineRegex=None, blockRegex=None):
-    #     CommentDictionary.parseFile(path, re.compile(lineRegex), re.compile(blockRegex))
-
     @staticmethod
-    def parseFileInThread(path, lineRegex=None, blockRegex=None):
-        return thread_call.parseFileInProcess(path, lineRegex, blockRegex)
+    def parseFile(path, lineRegex=None, blockRegex = None):
+        buff_limit = 512 * 1024
+        allComments = []
+        # if os.path.getsize(path) > self.buff_limit:
+        #     return []
+        with codecs.open(path, 'r', 'utf-8', errors='ignore') as corpus:
+            if blockRegex:
+                file_buff = StringIO.StringIO()
+                buff_size = 0
+            if lineRegex:
+                # parse Inline Comments
+                for line in corpus:
+                    line_size = len(line)
+                    if line_size > 2:
+                        if blockRegex and buff_size < buff_limit:
+                            file_buff.write(line)
+                            buff_size += line_size
+                        result = lineRegex.match(line)
+                        if result:
+                            if result.lastindex >= 2:
+                                gr = result.group(2)
+                                if gr:
+                                    c = gr.strip()
+                                    if len(c) != 0:
+                                        allComments.append(c)
 
+            if blockRegex:
+                # Second time read file from buffer
+                if buff_size < buff_limit and lineRegex:
+                    file_buff.seek(0)
+                    buff = file_buff
+                else:
+                    corpus.seek(0)
+                    buff = corpus
+                    # parse Block Comments
+                results = blockRegex.finditer(buff.read())
+                for result in results:
+                    if result.lastindex >= 2:
+                        res = result.group(2)
+                        if len(res) != 0:
+                            allComments.append(res)
+
+        return allComments
+
+    # @staticmethod
+    # def parseFileInThread(path, lineRegex=None, blockRegex=None):
+    #     return thread_call.parseFileInProcess(path, lineRegex, blockRegex)
+    #
     def parseAllComments(self, path, type):
         allComments = []
         if type in self.reference:
@@ -125,7 +121,7 @@ class CommentDictionary:
                     text_str = corpus.read()#.replace('\n', ' ')
                     allComments.append(text_str)
             else:
-                allComments = self.parseFileInThread(path, comdef.lineRegex, comdef.blockRegex)
+                allComments = self.parseFile(path, comdef.lineRegex, comdef.blockRegex)
         else:
             parsed = False
             for drc in self.nanorc:
@@ -142,46 +138,16 @@ class CommentDictionary:
                             else:
                                 blockRegex = None
                             if lineRegex or blockRegex:
-                                allComments.extend(self.parseFileInThread(path, lineRegex, blockRegex))
+                                allComments.extend(self.parseFile(path, lineRegex, blockRegex))
                             else:
                                 break
                             i += 1
-                        if len(allComments):
-                            print type
+                        # if len(allComments):
+                        #     print type
                         parsed = True
                         break
                 if parsed:
                     break
-        return allComments
-
-    def parseInline(self, fileMappings):
-        '''Assumes input is the result of the mapFilesToTypes method in
-        cli.py. So long as there's a dictionary mapping file paths to file
-        types it should be fine though. Returns all supported inline comments'''
-        allComments = []
-        for key in fileMappings:
-            if fileMappings[key] in self.reference:
-                regexPattern = self.reference[key].lineRegex
-                with open(key, 'r') as corpus:
-                    for line in corpus:
-                        if re.match(regexPattern, line):
-                            allComments.append(re.match(regexPattern, line).group(2))
-        return allComments
-
-    def parseBlock(self, fileMappings):
-        '''Similar to parseInline, except this round looks for block comments'''
-        allComments = []
-        for key in fileMappings:
-            if fileMappings[key] in self.reference:
-                regexPattern = self.reference[key].blockRegex
-                with open(key, 'r').read() as corpus:
-                    results = re.finditer(regexPattern, corpus)
-                    for result in results:
-                        cleanedResult = []
-                        result = result.group(2).split('\n')
-                        for line in result:
-                            cleanedResult.append(line.strip()[len(self.reference[key].blockContinuation):].lower())
-                        allComments.append(" ".join(cleanedResult))
         return allComments
 
 def test_big_file():

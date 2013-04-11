@@ -25,7 +25,6 @@ class Parser():
     curr_owner = ''
     curr_repo = ''
 
-
     def get_module_by_path(self, path):
         res = path.split(os.path.sep)
         owner = res[self.root_len]
@@ -39,7 +38,9 @@ class Parser():
             self.curr_repo = repo
             self.curr_module = module
             return module
+
     mid = ''
+
     def get_module_by_id(self, mid):
         if mid == self.mid:
             return self.curr_module_
@@ -54,6 +55,7 @@ class Parser():
         self.logger.info('Parser started')
         time_interval_indexing = 0
         results = []
+        last_comment_count = 0
         while True:
             curr_time = time.time()
             time_interval = (curr_time - last_time_f)
@@ -62,12 +64,13 @@ class Parser():
                 last_time.value = int(last_time_f)
             f, mid = files_query.get()
             file_path = os.path.normcase(f)
-            self.logger.info('Get file: last time: %f, %f, %s, ', time_interval, time_interval_indexing, file_path )
+            self.logger.info('Get file: last time: %f, %d, %f, %s, ', time_interval, last_comment_count, time_interval_indexing, file_path )
             ext = os.path.splitext(file_path)[1][1:].lower()
             results = []
             comments = self.c.parseAllComments(file_path, ext)
             # time.sleep(5)
-            if len(comments) != 0:
+            last_comment_count = len(comments)
+            if last_comment_count != 0:
                 module = self.get_module_by_id(mid)
                 if module:
                     res = file_path.split(os.path.sep)
@@ -84,7 +87,7 @@ class Parser():
                     self.logger.error('Module not found, id: %s', mid)
 
 def proc_main(q, v=multiprocessing.Value('i', int(time.time())), id=0):
-    logging.basicConfig(filename='parser.log', level=logging.INFO)
+    logging.basicConfig(filename='parser.%d.%d.log' % (id, v.value), level=logging.INFO)
     p = Parser(id)
     p.main(q, v)
 

@@ -3,11 +3,9 @@
 #feedback is welcome
 import StringIO
 import codecs
-import multiprocessing
 import os
 import re
 from nanorc import nanorc
-import thread_call
 
 
 class CommentDef:
@@ -108,21 +106,19 @@ class CommentDictionary:
 
         return allComments
 
-    # @staticmethod
-    # def parseFileInThread(path, lineRegex=None, blockRegex=None):
-    #     return thread_call.parseFileInProcess(path, lineRegex, blockRegex)
-    #
-    def parseAllComments(self, path, type):
+    def parseAllComments(self, path, file_type=None):
         allComments = []
-        if type in self.reference:
-            comdef = self.reference[type]
+        if not file_type:
+            file_type = os.path.splitext(path)[1][1:].lower()
+        if file_type in self.reference:
+            comdef = self.reference[file_type]
             if comdef == None:
                 with codecs.open(path, 'r', 'utf-8', errors='ignore') as corpus:
                     text_str = corpus.read()#.replace('\n', ' ')
                     allComments.append(text_str)
             else:
                 allComments = self.parseFile(path, comdef.lineRegex, comdef.blockRegex)
-        else:
+        else: # use nanorc rules
             parsed = False
             for drc in self.nanorc:
                 for file_pattern in drc['filename_regex']:
@@ -154,8 +150,9 @@ def test_big_file():
     bigcss = 'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\second.css'
     smallcss = 'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\fourth.css'
     c = CommentDictionary()
-    print c.parseFileInThread(bigcss, re.compile(r'([/]{2})(.*)'), re.compile(r'(/\*)((.|\r|\n)*?)(?=\*/)'))
-    print c.parseFileInThread(smallcss, re.compile(r'([/]{2})(.*)'), re.compile(r'(/\*)((.|\r|\n)*?)(?=\*/)'))
+    # print c.parseFile(bigcss, re.compile(r'([/]{2})(.*)'), re.compile(r'(/\*)((.|\r|\n)*?)(?=\*/)'))
+    print c.parseFile(smallcss, re.compile(r'([/]{2})(.*)'), re.compile(r'(/\*)((.|\r|\n)*?)(?=\*/)'))
+    print c.parseAllComments(smallcss)
 
 def main():
     test_big_file()

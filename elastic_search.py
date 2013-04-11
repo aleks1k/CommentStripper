@@ -1,18 +1,9 @@
 __author__ = 'Alexey'
 
 from pyes import *
-from pyes.queryset import generate_model
+# only in beta
+# from pyes.queryset import generate_model
 
-# import config
-#
-# conn = ES(config.DB_HOST + ':9200')
-#
-# q = TermQuery("name", "joe")
-# results = conn.search(query = q)
-#
-# for r in results:
-#     print r
-# indexname = 'mongomodules'
 class ESIndex():
     indexname = 'comments-index'
     doc_type = 'module'
@@ -64,11 +55,9 @@ class ESIndex():
         if bulk:
             self.conn.indices.refresh(self.indexname)
 
-    def print_all(self):
-        model = generate_model(self.indexname, self.doc_type)
-        results = model.objects.all()
-        for r in results:
-            print r
-    # results = model.objects.filter(name="joe")
-    # for r in results:
-    #     print r
+    # only in beta
+    # def print_all(self):
+    #     model = generate_model(self.indexname, self.doc_type)
+    #     results = model.objects.all()
+    #     for r in results:
+    #         print r

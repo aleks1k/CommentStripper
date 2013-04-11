@@ -3,11 +3,8 @@ import multiprocessing
 from pprint import pprint
 import sys
 import os
-import itertools
-from paramiko.logging22 import logger
 import pymongo
 import time
-import comment_def
 import config
 from elastic_search import ESIndex
 from parserInst import proc_main
@@ -66,7 +63,6 @@ class CommentsMain():
                 self.procs.remove(p)
                 self.start_process(p.id)
                 break
-                # p.close()
 
     def kill_procs(self):
         for p in self.procs:

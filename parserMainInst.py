@@ -17,6 +17,7 @@ class CommentsMain():
         self.ext_stat = dict()
         self.procs = []
         self.files_query = multiprocessing.Queue()
+        self.es_lock = multiprocessing.Lock()
         for i in range(0, 10):
             self.start_process(i)
 
@@ -44,7 +45,7 @@ class CommentsMain():
     def start_process(self, id):
         start_time = multiprocessing.Value('i', int(time.time()))
 
-        proc = multiprocessing.Process(target=proc_main, args=(self.files_query, start_time, id))
+        proc = multiprocessing.Process(target=proc_main, args=(self.files_query, start_time, id, self.es_lock))
         proc.start_time = start_time
         proc.id = id
         self.procs.append(proc)
@@ -70,7 +71,8 @@ class CommentsMain():
             p.join()
 
 def main():
-    logging.basicConfig(filename='main.log', filemode='w', level=logging.INFO)
+    start_time = int(time.time())
+    logging.basicConfig(filename=os.path.join(config.LOG_PATH, 'main.%d.log' % start_time), filemode='w', level=logging.INFO)
     mongoConn = pymongo.MongoClient(config.DB_HOST, 27017)
     db = mongoConn[config.DB_NAME]
     modules_collection = db['modules']
@@ -79,7 +81,6 @@ def main():
     p = CommentsMain()
     es = ESIndex()
     es.create_index()
-
     mcount = modules.count()
     i = 0
     for module in modules:
@@ -101,12 +102,13 @@ def main():
                 p.files_count += 1
                 if p.files_count % 100 == 0:
                     print '.',
+            es.add_module(module)
             p.getFiles(path, add_file)
             sys.stdout.write("Done!\n")
             sys.stdout.flush()
 
             if i % 2 == 0:
-                with open('ext_stat.log', 'w') as stat_log:
+                with open(os.path.join(config.LOG_PATH, 'ext_stat.%d.log' % start_time), 'w') as stat_log:
                     ext_list = []
                     for (ext, ecount) in p.ext_stat.items():
                         ext_list.append((ext, ecount))

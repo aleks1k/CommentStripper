@@ -50,7 +50,7 @@ class Parser():
             self.curr_module_ = module
             return module
 
-    def main(self, files_query, last_time):
+    def main(self, files_query, last_time, es_lock):
         last_time_f = float(last_time.value)
         self.logger.info('Parser started')
         time_interval_indexing = 0
@@ -66,7 +66,7 @@ class Parser():
             file_path = os.path.normcase(f)
             self.logger.info('Get file: last time: %f, %d, %f, %s, ', time_interval, last_comment_count, time_interval_indexing, file_path )
             ext = os.path.splitext(file_path)[1][1:].lower()
-            results = []
+            # results = []
             comments = self.c.parseAllComments(file_path, ext)
             # time.sleep(5)
             last_comment_count = len(comments)
@@ -76,20 +76,21 @@ class Parser():
                     res = file_path.split(os.path.sep)
                     file_name = os.path.sep.join(res[self.root_len + 2:])
                     # file_name = self.file_name
-                    results.append(dict(file_name=file_name, file_type=ext, comments=comments))
+                    result = dict(file_name=file_name, file_type=ext, comments=comments)
                     last_time_indexing = time.time()
                     # if len(results) > 10:
                     #     self.es.add_to_index(results, module, bulk=True)
                     #     results = []
-                    self.es.add_to_index(results, module)
+                    with es_lock:
+                        self.es.add_comments_form_file(mid, result)
                     time_interval_indexing = (time.time() - last_time_indexing)
                 else:
                     self.logger.error('Module not found, id: %s', mid)
 
-def proc_main(q, v=multiprocessing.Value('i', int(time.time())), id=0):
-    logging.basicConfig(filename='parser.%d.%d.log' % (id, v.value), level=logging.INFO)
+def proc_main(q, v=multiprocessing.Value('i', int(time.time())), id=0, es_lock=None):
+    logging.basicConfig(filename=os.path.join(config.LOG_PATH, 'parser.%d.%d.log' % (id, v.value)), level=logging.INFO)
     p = Parser(id)
-    p.main(q, v)
+    p.main(q, v, es_lock)
 
 if __name__ == "__main__":
     q = multiprocessing.Queue()

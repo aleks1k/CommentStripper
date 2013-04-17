@@ -57,7 +57,7 @@ class CommentsMain():
             curr_time = int(time.time())
             # with p.start_time.get_lock():
             spend_time = curr_time - p.start_time.value
-            if spend_time > 30:
+            if spend_time > 120:
                 logger.warn('Kill parser process %d by timeout %d', p.id, spend_time)
                 p.terminate()
                 p.join()
@@ -105,7 +105,6 @@ def main():
                     print '.',
             # es.add_module(module)
             db.drop_collection(config.DB_COMMENTS_COLLECTION)
-            time.sleep(20)
             p.getFiles(path, add_file)
             while p.files_query.qsize() > 0:
                 time.sleep(1)

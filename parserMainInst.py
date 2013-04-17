@@ -17,7 +17,7 @@ class CommentsMain():
         self.ext_stat = dict()
         self.procs = []
         self.files_query = multiprocessing.Queue()
-        self.es_lock = multiprocessing.Lock()
+        self.es_lock = None#multiprocessing.Lock()
         for i in range(0, 10):
             self.start_process(i)
 
@@ -106,14 +106,10 @@ def main():
             # es.add_module(module)
             db.drop_collection(config.DB_COMMENTS_COLLECTION)
             p.getFiles(path, add_file)
-            print '\n\twaiting',
             while p.files_query.qsize() > 0:
-                print '*',
                 time.sleep(1)
                 p.check_procs()
             es.add_module_from_mongo(module, db[config.DB_COMMENTS_COLLECTION])
-            # sys.stdout.write("Done!\n")
-            # sys.stdout.flush()
             print '\n\tDone!'
             if i % 2 == 0:
                 with open(os.path.join(config.LOG_PATH, 'ext_stat.%d.log' % start_time), 'w') as stat_log:

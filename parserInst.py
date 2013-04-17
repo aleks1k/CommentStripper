@@ -55,7 +55,7 @@ class Parser():
         last_time_f = float(last_time.value)
         self.logger.info('Parser started')
         time_interval_indexing = 0
-        results = []
+        # results = []
         last_comment_count = 0
         while True:
             curr_time = time.time()

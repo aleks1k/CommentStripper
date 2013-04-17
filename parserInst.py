@@ -17,7 +17,8 @@ class Parser():
         mongoConn = pymongo.MongoClient(config.DB_HOST, 27017)
         self.logger.info('Connect to mongo db: %s', config.DB_HOST)
         db = mongoConn[config.DB_NAME]
-        self.modules = db['modules']
+        self.modules = db[config.DB_MODULES_COLLECTION]
+        self.comments = db[config.DB_COMMENTS_COLLECTION]
         self.es = ESIndex()
         self.c = comment_def.CommentDictionary()
         self.root_len = len(os.path.normcase(config.GITHUB_REPOS_CLONE_PATH).split(os.path.sep))
@@ -81,8 +82,8 @@ class Parser():
                     # if len(results) > 10:
                     #     self.es.add_to_index(results, module, bulk=True)
                     #     results = []
-                    with es_lock:
-                        self.es.add_comments_form_file(mid, result)
+                    # with es_lock:
+                    self.es.add_comments_form_file_to_mongo(self.comments, mid, result)
                     time_interval_indexing = (time.time() - last_time_indexing)
                 else:
                     self.logger.error('Module not found, id: %s', mid)

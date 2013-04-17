@@ -89,6 +89,7 @@ def main():
         repo_name = '%(user)s/%(repo)s' % id
         logger.info('Module %s', repo_name)
         print '(%d/%d)' % (i, mcount), repo_name
+        print '\tparsing',
         path = os.path.join(config.GITHUB_REPOS_CLONE_PATH, repo_name)
         p.files_count = 0
         if os.path.exists(path):
@@ -102,11 +103,18 @@ def main():
                 p.files_count += 1
                 if p.files_count % 100 == 0:
                     print '.',
-            es.add_module(module)
+            # es.add_module(module)
+            db.drop_collection(config.DB_COMMENTS_COLLECTION)
             p.getFiles(path, add_file)
-            sys.stdout.write("Done!\n")
-            sys.stdout.flush()
-
+            print '\n\twaiting',
+            while p.files_query.qsize() > 0:
+                print '*',
+                time.sleep(1)
+                p.check_procs()
+            es.add_module_from_mongo(module, db[config.DB_COMMENTS_COLLECTION])
+            # sys.stdout.write("Done!\n")
+            # sys.stdout.flush()
+            print '\n\tDone!'
             if i % 2 == 0:
                 with open(os.path.join(config.LOG_PATH, 'ext_stat.%d.log' % start_time), 'w') as stat_log:
                     ext_list = []

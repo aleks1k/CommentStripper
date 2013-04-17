@@ -1,5 +1,7 @@
 import logging
 import multiprocessing
+from multiprocessing import Queue
+from Queue import Empty as QueueEmptyException
 import os
 from bson import ObjectId
 import pymongo
@@ -63,30 +65,34 @@ class Parser():
             last_time_f = curr_time
             with last_time.get_lock():
                 last_time.value = int(last_time_f)
-            f, mid = files_query.get()
-            file_path = os.path.normcase(f)
-            self.logger.info('Get file: last time: %f, %d, %f, %s, ', time_interval, last_comment_count, time_interval_indexing, file_path )
-            ext = os.path.splitext(file_path)[1][1:].lower()
-            # results = []
-            comments = self.c.parseAllComments(file_path, ext)
-            # time.sleep(5)
-            last_comment_count = len(comments)
-            if last_comment_count != 0:
-                module = self.get_module_by_id(mid)
-                if module:
-                    res = file_path.split(os.path.sep)
-                    file_name = os.path.sep.join(res[self.root_len + 2:])
-                    # file_name = self.file_name
-                    result = dict(file_name=file_name, file_type=ext, comments=comments)
-                    last_time_indexing = time.time()
-                    # if len(results) > 10:
-                    #     self.es.add_to_index(results, module, bulk=True)
-                    #     results = []
-                    # with es_lock:
-                    self.es.add_comments_form_file_to_mongo(self.comments, mid, result)
-                    time_interval_indexing = (time.time() - last_time_indexing)
-                else:
-                    self.logger.error('Module not found, id: %s', mid)
+            try:
+                f, mid = files_query.get(True, 10)
+
+                file_path = os.path.normcase(f)
+                self.logger.info('Get file: last time: %f, %d, %f, %s, ', time_interval, last_comment_count, time_interval_indexing, file_path )
+                ext = os.path.splitext(file_path)[1][1:].lower()
+                # results = []
+                comments = self.c.parseAllComments(file_path, ext)
+                # time.sleep(5)
+                last_comment_count = len(comments)
+                if last_comment_count != 0:
+                    module = self.get_module_by_id(mid)
+                    if module:
+                        res = file_path.split(os.path.sep)
+                        file_name = os.path.sep.join(res[self.root_len + 2:])
+                        # file_name = self.file_name
+                        result = dict(file_name=file_name, file_type=ext, comments=comments)
+                        last_time_indexing = time.time()
+                        # if len(results) > 10:
+                        #     self.es.add_to_index(results, module, bulk=True)
+                        #     results = []
+                        # with es_lock:
+                        self.es.add_comments_form_file_to_mongo(self.comments, mid, result)
+                        time_interval_indexing = (time.time() - last_time_indexing)
+                    else:
+                        self.logger.error('Module not found, id: %s', mid)
+            except QueueEmptyException:
+                pass
 
 def proc_main(q, v=multiprocessing.Value('i', int(time.time())), id=0, es_lock=None):
     logging.basicConfig(filename=os.path.join(config.LOG_PATH, 'parser.%d.%d.log' % (id, v.value)), level=logging.INFO)

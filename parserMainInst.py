@@ -105,6 +105,7 @@ def main():
                     print '.',
             # es.add_module(module)
             db.drop_collection(config.DB_COMMENTS_COLLECTION)
+            time.sleep(20)
             p.getFiles(path, add_file)
             while p.files_query.qsize() > 0:
                 time.sleep(1)

@@ -1,5 +1,8 @@
 import pymongo
+
 import config
+
+import time
 
 __author__ = 'Alexey'
 
@@ -14,7 +17,7 @@ class ESIndex():
     mapping = es_mapping.mapping
 
     def __init__(self):
-        self.conn = ES('127.0.0.1:9200') # Use HTTP
+        self.conn = ES('127.0.0.1:9200', timeout=180.0) # Use HTTP
         # self.conn = ES('127.0.0.1:9500') # Use thrift
 
     def create_index(self):
@@ -47,16 +50,27 @@ class ESIndex():
         files_count = collect.count()
         print '\n\tindexing %d files' % files_count,
         logger.info('start indexing %d files' % files_count)
-        limit = 1000
+        limit = 500
+        max_files = 5000
+        if files_count > max_files:
+            files_count = max_files
         for i in range(0, files_count, limit):
             source_files = list(collect.find({}, {'_id': 0}).skip(i).limit(limit))
             print '-',
-            if i == 0:
-                self.add_module(module_info, source_files)
-            else:
-                script = 'ctx._source.source_files += source_file'
-                params = dict(source_file=source_files)
-                self.conn.partial_update(self.index_name, self.doc_type, module_info['_id'], script, params)
+            excepted = True
+            while excepted:
+                try:
+                    if i == 0:
+                        self.add_module(module_info, source_files)
+                    else:
+                        script = 'ctx._source.source_files += source_file'
+                        params = dict(source_file=source_files)
+                        self.conn.partial_update(self.index_name, self.doc_type, module_info['_id'], script, params)
+                    excepted = False
+                except Exception:
+                    print 'NoServerAvailable'
+                    time.sleep(1)
+                    self.conn = ES('127.0.0.1:9200', timeout=180.0)
 
     # only in beta
     # def print_all(self):

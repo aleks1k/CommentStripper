@@ -76,11 +76,11 @@ def main():
     mongoConn = pymongo.MongoClient(config.DB_HOST, 27017)
     db = mongoConn[config.DB_NAME]
     modules_collection = db['modules']
-    modules = modules_collection.find()
+    modules = modules_collection.find(timeout=False).skip(910)
 
     p = CommentsMain()
     es = ESIndex()
-    es.create_index()
+#    es.create_index()
     mcount = modules.count()
     i = 0
     for module in modules:

@@ -69,7 +69,7 @@ class Parser():
                 f, mid = files_query.get(True, 10)
 
                 file_path = os.path.normcase(f)
-                self.logger.info('Get file: last time: %f, %d, %f, %s, ', time_interval, last_comment_count, time_interval_indexing, file_path )
+                # self.logger.info('Get file: last time: %f, %d, %f, %s, ', time_interval, last_comment_count, time_interval_indexing, file_path )
                 ext = os.path.splitext(file_path)[1][1:].lower()
                 # results = []
                 comments = self.c.parseAllComments(file_path, ext)

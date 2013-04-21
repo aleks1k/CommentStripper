@@ -51,8 +51,8 @@ class ESIndex():
         print '\n\tindexing %d files' % files_count,
         logger.info('start indexing %d files' % files_count)
         limit = 500
-        max_files = 5000
-        if files_count > max_files:
+        max_files = config.COMMENTS_PARSE_MAXFILES
+        if max_files > 0 and files_count > max_files:
             files_count = max_files
         for i in range(0, files_count, limit):
             source_files = list(collect.find({}, {'_id': 0}).skip(i).limit(limit))
@@ -68,7 +68,7 @@ class ESIndex():
                         self.conn.partial_update(self.index_name, self.doc_type, module_info['_id'], script, params)
                     excepted = False
                 except Exception:
-                    print 'NoServerAvailable'
+                    print 'Elastic Search Server Not Available'
                     time.sleep(1)
                     self.conn = ES('127.0.0.1:9200', timeout=180.0)
 

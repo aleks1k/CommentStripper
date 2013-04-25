@@ -46,6 +46,9 @@ class ESIndex():
         # doc['module_id'] = module_id
         collect.insert(doc)
 
+    def is_module_in_index(self, module_id):
+        return self.conn.exists(self.index_name, self.doc_type, module_id)
+
     def add_module_from_mongo(self, module_info, collect):
         files_count = collect.count()
         print '\n\tindexing %d files' % files_count,

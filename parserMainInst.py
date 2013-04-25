@@ -1,23 +1,14 @@
-import logging
 import multiprocessing
-import pickle
-from pprint import pprint
-import sys
 import os
-import traceback
-import pymongo
 import time
 import config
-from elastic_search import ESIndex
 from parserInst import proc_main
-
-logger = logging.getLogger('main')
 
 class CommentsMain():
     queue_limit = 100
-    proc_timeout = 120
+    proc_timeout = 30
     ignore_dirs = ['.git', '.idea']
-    processes_count = 5
+    processes_count = 10
 
     def __init__(self):
         self.ext_stat = dict()
@@ -86,7 +77,7 @@ class CommentsMain():
             # with p.start_time.get_lock():
             spend_time = curr_time - p.start_time.value
             if spend_time > self.proc_timeout:
-                logger.warn('Kill parser process %d by timeout %d', p.id, spend_time)
+                self.logger.warn('Kill parser process %d by timeout %d', p.id, spend_time)
                 p.terminate()
                 p.join()
                 self.procs.remove(p)
@@ -97,70 +88,3 @@ class CommentsMain():
         for p in self.procs:
             p.terminate()
             p.join()
-
-def main(new_ind=True):
-    start_time = int(time.time())
-    logging.basicConfig(filename=os.path.join(config.LOG_PATH, 'main.%d.log' % start_time), filemode='w', level=logging.INFO)
-    mongoConn = pymongo.MongoClient(config.DB_HOST, 27017)
-    db = mongoConn[config.DB_NAME]
-    modules_collection = db['modules']
-    startModuleIndex = 0
-    pcl_file_name = 'last_success.pcl'
-    if not new_ind and os.path.exists(pcl_file_name):
-        with open(pcl_file_name, 'rb') as pcl_file:
-            startModuleIndex = pickle.load(pcl_file)
-    modules = modules_collection.find(timeout=False).sort('_id').skip(startModuleIndex)
-
-    p = CommentsMain()
-    p.db = db
-    es = ESIndex()
-    if not new_ind:
-        es.create_index()
-    mcount = modules.count()
-    module_num = startModuleIndex
-    for module in modules:
-        mid = dict(user=module['owner'], repo=module['module_name'])
-        module_num += 1
-        repo_name = '%(user)s/%(repo)s' % mid
-        logger.info('Module %s', repo_name)
-        print '(%d/%d)' % (module_num, mcount), repo_name
-        print '\tparsing',
-        path = os.path.join(config.GITHUB_REPOS_CLONE_PATH, repo_name)
-        if os.path.exists(path):
-            module_id = str(module['_id'])
-            p.curr_module_id = module_id
-            db.drop_collection(config.DB_COMMENTS_COLLECTION)
-            db.create_collection(config.DB_COMMENTS_COLLECTION)
-
-            p.getFiles(path)
-            while p.files_query.qsize() > 0:
-                time.sleep(3)
-                p.check_procs()
-            es.add_module_from_mongo(module, db[config.DB_COMMENTS_COLLECTION])
-            print '\n\tDone!'
-            if module_num % 100 == 0:
-                with open(os.path.join(config.LOG_PATH, 'ext_stat.%d.log' % start_time), 'w') as stat_log:
-                    ext_list = []
-                    for (ext, ecount) in p.ext_stat.items():
-                        ext_list.append((ext, ecount))
-
-                    pprint(sorted(ext_list, key=lambda x: x[1], reverse=True), stat_log)
-        else:
-            print 'Repo not found'
-        with open(pcl_file_name, 'wb') as pcl_file:
-            pickle.dump(module_num, pcl_file)
-    while not p.files_query.empty():
-        p.check_procs()
-        time.sleep(1)
-    p.kill_procs()
-    print 'END!!!'
-
-if __name__ == "__main__":
-    new_ind = 'new' in sys.argv
-    while True:
-        try:
-            main(new_ind)
-        except:
-            traceback.print_exc()
-            logger.error(traceback.format_exc())
-            new_ind = False

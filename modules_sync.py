@@ -14,18 +14,12 @@ from elastic_search import ESIndex
 
 import git_tools
 
-class ModulesSync(ModulesUpdaterBase):
-    name = 'ModulesSync'
+class ModulesGitUpdater(ModulesUpdaterBase):
+    name = 'ModulesGitUpdater'
 
     def init(self, new_ind):
-        self.p = None#CommentsMain()
-        if self.p:
-            self.p.db = self.db
-            self.p.logger = self.logger
-        self.es = ESIndex()
         if new_ind:
-            print 'Create Index'
-            # self.es.create_index()
+            pass
             # self.db.drop_collection('module_updates')
         self.err_modules = open(os.path.join(config.LOG_PATH, 'not_cloned_modules.%d.txt' % self.start_time), 'w')
 
@@ -45,7 +39,7 @@ class ModulesSync(ModulesUpdaterBase):
 
                     updates.save(item)
 
-                git_tools.git_pull(mod_path_id, save_update_to_db)
+                git_tools.git_pull(path, save_update_to_db)
             else:
                 git_tools.git_clone(mod_path_id)
             sys.stdout.write("Done!\n")
@@ -72,7 +66,32 @@ class ModulesSync(ModulesUpdaterBase):
 
 
     def update_module(self, num, module_info):
-        print '\tupdate from git',
+        print '\tupdate from git'
+        self.update_from_git(module_info)
+
+    def final(self):
+        self.err_modules.close()
+
+class ModulesSync(ModulesUpdaterBase):
+    name = 'ModulesSync'
+
+    def init(self, new_ind):
+        self.p = CommentsMain()
+        if self.p:
+            self.p.db = self.db
+            self.p.logger = self.logger
+        self.es = ESIndex()
+        self.err_modules = open(os.path.join(config.LOG_PATH, 'not_cloned_modules.%d.txt' % self.start_time), 'w')
+
+        # self.clear_index()
+
+    def clear_index(self):
+        print 'Create Index'
+        self.es.create_index()
+        self.db.drop_collection('module_updates')
+
+    def update_module(self, num, module_info):
+        # print '\tupdate from git',
         # self.update_from_git(module_info)
 
         print '\tparsing',
@@ -85,12 +104,14 @@ class ModulesSync(ModulesUpdaterBase):
             self.db.create_collection(config.DB_COMMENTS_COLLECTION)
 
             doc = self.es.is_module_in_index(module_id)
+            diff_res = None
             if doc:
                 diff_res = self.update(module_id, path)
                 if diff_res:
-                    for filename in diff_res['A']:
-                        if self.p:
-                            self.p.add_file(filename)
+                    for files in diff_res['A'], diff_res['M']:
+                        for filename in files:
+                            if self.p:
+                                self.p.add_file(os.path.join(path, filename))
             else:
                 if self.p:
                     self.p.getFiles(path)
@@ -99,7 +120,11 @@ class ModulesSync(ModulesUpdaterBase):
                 while self.p.files_query.qsize() > 0:
                     time.sleep(3)
                     self.p.check_procs()
-            self.es.add_module_from_mongo(module_info, self.db[config.DB_COMMENTS_COLLECTION])
+            res = self.es.add_module_from_mongo(module_info, self.db[config.DB_COMMENTS_COLLECTION], diff_res)
+            if res:
+                if diff_res:
+                    updates = self.db['module_updates']
+                    updates.remove(ObjectId(module_id))
             print '\n\tDone!'
             if num % 100 == 0:
                 with open(os.path.join(config.LOG_PATH, 'ext_stat.%d.log' % self.start_time), 'w') as stat_log:
@@ -118,18 +143,21 @@ class ModulesSync(ModulesUpdaterBase):
             if git_tools.check_git_repo_exist(repo_path):
                 res = git_tools.git_diff(repo_path, up_info['old_commit'], up_info['new_commit'])
                 print 'A: %d, M: %d, D: %d' % (len(res['A']),len(res['M']),len(res['D']))
-                # pprint(res)
                 return res
         return None
 
     def final(self):
         self.err_modules.close()
-        self.p.kill_procs()
+        if self.p:
+            self.p.kill_procs()
 
 if __name__ == "__main__":
     new_ind = 'new' in sys.argv
-    new_ind = True
-    LIMIT = 20
-    u = ModulesSync()
+    # new_ind = True
+    LIMIT = None
+    if 'git' in sys.argv:
+        u = ModulesGitUpdater()
+    else:
+        u = ModulesSync()
     u.main(new_ind, LIMIT)
     u.final()

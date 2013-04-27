@@ -91,16 +91,16 @@ def git_fetch(id):
         print remote.name
         remote.fetch(progress=LogRemoteProgress('Fetch'))
 
-def git_pull(id, save_update=None):
-    path = get_path(id)
+def git_pull(path, save_update=None):
     repo = git.Repo(path)
     remote = repo.remotes.origin
     # print remote.name
     old_commit = str(repo.head.commit)
-    os.environ['GIT_PYTHON_TRACE'] = 'full'
+    # os.environ['GIT_PYTHON_TRACE'] = 'full'
     remote.pull()#progress=LogRemoteProgress('Pull'))
     new_commit = str(repo.head.commit)
     if save_update and old_commit != new_commit:
+        print 'Updated'
         save_update(old_commit, new_commit)
 
 def git_clone(id):
@@ -124,14 +124,9 @@ def get_changed_files(diff):
     return res
 
 def git_diff(path, old_commit, new_commit):
-    repo = git.Repo(path)
-    hcommit = repo.head.commit
-    # idiff = hcommit.diff()          # diff tree against index
-    tdiff = hcommit.diff(old_commit)  # diff tree against previous tree
-    # for diff_added in tdiff.iter_change_type('M'):
-    res = get_changed_files(tdiff)
+    diff = git.Repo(path).rev_parse(old_commit).diff(new_commit)
+    res = get_changed_files(diff)
     return res
-    # pprint(res)
 
 def drop_dir(path):
     for root, dirs, files in os.walk(path, topdown=False):
@@ -148,61 +143,13 @@ def main():
     modules_collection = db['modules']
     modules = modules_collection.find().limit(50)
 
-
-
-    count = modules.count()
-    i = 0
-    err_modules = open('not_cloned_modules.txt', 'w')
-    for module in modules:
-        id = dict(user=module['owner'], repo=module['module_name'])
-        i += 1
-        try:
-            print '(%d/%d)' % (i, count), '%(user)s/%(repo)s' % id
-            if check_git_repo_exist(get_path(id)):
-                def save_update_to_db(old_commit, new_commit):
-                    module_id = module['_id']
-                    updates = db['module_updates']
-                    item = updates.find_one(module_id) # id update item equal module id
-                    if not item:
-                        item = dict(_id=module_id, old_commit=old_commit, new_commit=new_commit)
-                    else:
-                        item['new_commit'] = new_commit
-
-                    updates.save(item)
-
-                # git_diff(id)
-                git_pull(id, save_update_to_db)
-            else:
-                git_clone(id)
-            sys.stdout.write("Done!\n")
-            sys.stdout.flush()
-        except git.exc.GitCommandError as ex:
-            if ex.status == 128:
-                sys.stdout.write("Repository not found.\n")
-                sys.stdout.flush()
-                drop_dir(get_path(id))
-            err_modules.write('%(user)s/%(repo)s\n' % id)
-            err_modules.write(traceback.format_exc())
-            err_modules.flush()
-        except Exception as ex:
-            try:
-                print 'try make clone repo again...\n'
-                drop_dir(get_path(id))#, ignore_errors=True)
-                git_clone(id)
-                sys.stdout.write("Done!\n")
-                sys.stdout.flush()
-            except Exception as ex:
-                    err_modules.write('%(user)s/%(repo)s\n' % id)
-                    err_modules.write(traceback.format_exc())
-                    err_modules.flush()
-    err_modules.close()
-
     updates = db['module_updates']
     for d in updates.find():
         module = modules_collection.find_one(dict(_id=d['_id']))
         id = dict(user=module['owner'], repo=module['module_name'])
-        if check_git_repo_exist(get_path(id)):
-            git_diff(id, d['old_commit'], d['new_commit'])
+        path = get_path(id)
+        if check_git_repo_exist(path):
+            pprint(git_diff(path, d['old_commit'], d['new_commit']))
 
 
 if __name__ == "__main__":

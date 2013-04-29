@@ -15,7 +15,7 @@ class ESIndex():
     mapping = es_mapping.mapping
 
     def connect(self):
-        self.conn = ES('127.0.0.1:9200', timeout=180.0) # Use HTTP
+        self.conn = ES(config.ES_HOST, timeout=180.0) # Use HTTP
         # self.conn = ES('127.0.0.1:9500') # Use thrift
 
     def __init__(self):

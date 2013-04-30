@@ -128,28 +128,62 @@ def git_diff(path, old_commit, new_commit):
     res = get_changed_files(diff)
     return res
 
+def getstatusoutput(cmd):
+    """Return (status, output) of executing cmd in a shell."""
+    pipe = os.popen(cmd + ' 2>&1', 'r')
+    text = pipe.read()
+    sts = pipe.close()
+    if sts is None:
+        sts = 0
+    if text[-1:] == '\n':
+        text = text[:-1]
+    return sts, text
+
+
+def deleteDir(path):
+    """deletes the path entirely"""
+    path = os.path.abspath(path)
+    if not os.path.exists(path):
+        return True
+    if sys.platform == "win32":
+        cmd = "RMDIR " + path + " /s /q"
+    else:
+        cmd = "rm -rf " + path
+    result = getstatusoutput(cmd)
+    if(result[0] != 0):
+        raise RuntimeError(result[1])
+
 def drop_dir(path):
-    for root, dirs, files in os.walk(path, topdown=False):
-        for name in files:
-            filename = os.path.join(root, name)
-            os.chmod(filename, stat.S_IWUSR)
-            os.remove(filename)
-        for name in dirs:
-            os.rmdir(os.path.join(root, name))
+    return deleteDir(path)
+    # for root, dirs, files in os.walk(path, topdown=False):
+    #     for name in files:
+    #         filename = os.path.join(root, name)
+    #         os.chmod(filename, stat.S_IWUSR)
+    #         os.remove(filename)
+    #     for name in dirs:
+    #         os.rmdir(os.path.join(root, name))
 
 def main():
-    mongoConn = pymongo.MongoClient(config.DB_HOST, 27017)
-    db = mongoConn[config.DB_NAME]
-    modules_collection = db['modules']
-    modules = modules_collection.find().limit(50)
+    # mongoConn = pymongo.MongoClient(config.DB_HOST, 27017)
+    # db = mongoConn[config.DB_NAME]
+    # modules_collection = db['modules']
+    # modules = modules_collection.find().limit(5)
 
-    updates = db['module_updates']
-    for d in updates.find():
-        module = modules_collection.find_one(dict(_id=d['_id']))
-        id = dict(user=module['owner'], repo=module['module_name'])
-        path = get_path(id)
-        if check_git_repo_exist(path):
-            pprint(git_diff(path, d['old_commit'], d['new_commit']))
+    errors_modules = open(os.path.join(config.LOG_PATH, 'not_cloned_modules_names'), 'r')
+    for module_info in errors_modules.readlines():
+        path = os.path.join(config.GITHUB_REPOS_CLONE_PATH, module_info)
+        print module_info
+        drop_dir(path)
+
+    # return
+    #
+    # updates = db['module_updates']
+    # for d in updates.find():
+    #     module = modules_collection.find_one(dict(_id=d['_id']))
+    #     id = dict(user=module['owner'], repo=module['module_name'])
+    #     path = get_path(id)
+    #     if check_git_repo_exist(path):
+    #         pprint(git_diff(path, d['old_commit'], d['new_commit']))
 
 
 if __name__ == "__main__":

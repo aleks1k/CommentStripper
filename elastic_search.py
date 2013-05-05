@@ -90,31 +90,23 @@ class ESIndex():
         if files_count == 0:
             return True
         if diff_res:
+            print 'update'
             return self.update_module(module_info, collect, diff_res)
-        limit = 500
-        max_files = config.COMMENTS_PARSE_MAXFILES
-        if max_files > 0 and files_count > max_files:
-            files_count = max_files
+        limit = 1000
         for i in range(0, files_count, limit):
             source_files = list(collect.find({}, {'_id': 0}).skip(i).limit(limit))
             print '-',
             while True:
                 try:
                     if i == 0:
-                        return self.add_module(module_info, source_files)
+                        self.add_module(module_info, source_files)
                     else:
-                        return self.update_part(module_info, source_files)
+                        self.update_part(module_info, source_files)
+                    break
                 except Exception:
                     print 'Elastic Search Server Not Available'
                     time.sleep(1)
                     self.connect()
-
-    # only in beta
-    # def print_all(self):
-    #     model = generate_model(self.indexname, self.doc_type)
-    #     results = model.objects.all()
-    #     for r in results:
-    #         print r
 
 import unittest
 from bson import ObjectId

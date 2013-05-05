@@ -83,7 +83,7 @@ class ModulesSync(ModulesUpdaterBase):
         self.es = ESIndex()
         self.err_modules = open(os.path.join(config.LOG_PATH, 'not_cloned_modules.%d.txt' % self.start_time), 'w')
 
-        # self.clear_index()
+        if new_ind: self.clear_index()
 
     def clear_index(self):
         print 'Create Index'

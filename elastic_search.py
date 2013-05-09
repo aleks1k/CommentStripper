@@ -18,7 +18,9 @@ class ESIndex():
         self.conn = ES(config.ES_HOST, timeout=180.0) # Use HTTP
         # self.conn = ES('127.0.0.1:9500') # Use thrift
 
-    def __init__(self):
+    def __init__(self, index_name=None):
+        if index_name:
+            self.index_name = index_name
         self.connect()
 
     def create_index(self):

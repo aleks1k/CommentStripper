@@ -1,6 +1,6 @@
 __author__ = 'Alexey'
 
-index_name = 'comments-v2-index'
+index_name = 'modules-v4'
 doc_type = 'module_v2'
 
 mapping = {

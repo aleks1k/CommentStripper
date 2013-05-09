@@ -34,13 +34,13 @@ class ModulesUpdaterBase():
         logging.basicConfig(filename=os.path.join(config.LOG_PATH, '%s.%d.log' % (self.name, self.start_time)), filemode='w', level=logging.INFO)
         mongoConn = pymongo.MongoClient(config.DB_HOST, 27017)
         self.db = mongoConn[config.DB_NAME]
-        modules_collection = self.db[config.DB_MODULES_COLLECTION]
+        self.modules_collection = self.db[config.DB_MODULES_COLLECTION]
         startModuleIndex = 0
         pcl_file_name = 'last_success_%s.pcl' % self.name
         if not new_ind and os.path.exists(pcl_file_name):
             with open(pcl_file_name, 'rb') as pcl_file:
                 startModuleIndex = pickle.load(pcl_file)
-        modules = modules_collection.find(timeout=False).sort('_id').skip(startModuleIndex)
+        modules = self.modules_collection.find(timeout=False).sort('_id').skip(startModuleIndex)
         if limit:
             l = limit - startModuleIndex
             if l <= 0:

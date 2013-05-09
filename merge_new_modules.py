@@ -34,7 +34,6 @@ class ModulesNewMerge(ModulesUpdaterBase):
             self.output_col.insert(mod)
         self.err_modules.close()
 
-
 if __name__ == "__main__":
     new_ind = 'new' in sys.argv
     new_ind = True

@@ -23,24 +23,10 @@ class Parser():
         self.comments = db[config.DB_COMMENTS_COLLECTION]
         self.es = ESIndex()
         self.c = comment_def.CommentDictionary()
-        self.root_len = len(os.path.normcase(config.GITHUB_REPOS_CLONE_PATH).split(os.path.sep))
+        self.root_len = len(os.path.normcase(config.GITHUB_REPOS_CLONE_PATH[0]).split(os.path.sep)) #FIXME repo root dirs may have different len
 
     curr_owner = ''
     curr_repo = ''
-
-    def get_module_by_path(self, path):
-        res = path.split(os.path.sep)
-        owner = res[self.root_len]
-        repo = res[self.root_len + 1]
-        self.file_name = os.path.sep.join(res[self.root_len + 2:])
-        if repo == self.curr_repo and owner == self.curr_owner:
-            return self.curr_module
-        module = self.modules.find_one({'owner': owner, 'module_name': repo})
-        if module:
-            self.curr_owner = owner
-            self.curr_repo = repo
-            self.curr_module = module
-            return module
 
     mid = ''
 

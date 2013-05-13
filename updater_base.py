@@ -25,9 +25,9 @@ class ModulesUpdaterBase():
             raise Exception()
         print 'end'
 
-    def get_repo_path(self, module_info):
-        path = os.path.join(os.path.join(config.GITHUB_REPOS_CLONE_PATH, module_info['owner']), module_info['module_name'])
-        return path
+    # def get_repo_path(self, module_info):
+    #     path = os.path.join(os.path.join(config.GITHUB_REPOS_CLONE_PATH, module_info['owner']), module_info['module_name'])
+    #     return path
 
     def check_repo_dir_exist(self, module_info):
         for base_dir in config.GITHUB_REPOS_CLONE_PATH:

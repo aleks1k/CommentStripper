@@ -29,6 +29,13 @@ class ModulesUpdaterBase():
         path = os.path.join(os.path.join(config.GITHUB_REPOS_CLONE_PATH, module_info['owner']), module_info['module_name'])
         return path
 
+    def check_repo_dir_exist(self, module_info):
+        for base_dir in config.GITHUB_REPOS_CLONE_PATH:
+            path = os.path.join(os.path.join(base_dir, module_info['owner']), module_info['module_name'])
+            if os.path.exists(path):
+                return True, path
+        return False, path # return path in last dir from config
+
     def run(self, new_ind, limit=None):
         self.start_time = int(time.time())
         logging.basicConfig(filename=os.path.join(config.LOG_PATH, '%s.%d.log' % (self.name, self.start_time)), filemode='w', level=logging.INFO)

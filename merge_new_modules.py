@@ -28,11 +28,7 @@ class ModulesNewMerge(ModulesUpdaterBase):
             pass #delete this module
 
     def final(self):
-        modules = self.db[config.DB_MODULES_COLLECTION]
-        for mod in self.new_modules:
-            mod.pop('_id')
-            self.output_col.insert(mod)
-        self.err_modules.close()
+        pass
 
 if __name__ == "__main__":
     new_ind = 'new' in sys.argv
@@ -40,4 +36,4 @@ if __name__ == "__main__":
     LIMIT = None
     u = ModulesNewMerge()
     u.main(new_ind, LIMIT)
-    u.final()
+    # need execute mongo_update.js

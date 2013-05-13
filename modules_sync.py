@@ -95,26 +95,26 @@ class ModulesSync(ModulesUpdaterBase):
         # self.update_from_git(module_info)
 
         print '\tparsing',
-        path = self.get_repo_path(module_info)
-        if os.path.exists(path):
+        repo_dir_exist, path = self.check_repo_dir_exist(module_info)
+        if repo_dir_exist:
             module_id = str(module_info['_id'])
             if self.p:
                 self.p.curr_module_id = module_id
             self.db.drop_collection(config.DB_COMMENTS_COLLECTION)
             self.db.create_collection(config.DB_COMMENTS_COLLECTION)
 
-            doc = self.es.is_module_in_index(module_id)
+            # doc = self.es.is_module_in_index(module_id)
             diff_res = None
-            if doc:
-                diff_res = self.update(module_id, path)
-                if diff_res:
-                    for files in diff_res['A'], diff_res['M']:
-                        for filename in files:
-                            if self.p:
-                                self.p.add_file(os.path.join(path, filename))
-            else:
-                if self.p:
-                    self.p.getFiles(path)
+            # if doc:
+            #     diff_res = self.update(module_id, path)
+            #     if diff_res:
+            #         for files in diff_res['A'], diff_res['M']:
+            #             for filename in files:
+            #                 if self.p:
+            #                     self.p.add_file(os.path.join(path, filename))
+            # else:
+            if self.p:
+                self.p.getFiles(path)
 
             if self.p:
                 while self.p.files_query.qsize() > 0:

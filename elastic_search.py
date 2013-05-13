@@ -102,10 +102,10 @@ class ESIndex():
             print '-',
             while True:
                 try:
-                    if i == 0:
-                        return self.add_module(module_info, source_files)
-                    else:
-                        return self.update_part(module_info, source_files)
+                    # if i == 0:
+                    #     return self.add_module(module_info, source_files)
+                    # else:
+                    return self.update_part(module_info, source_files)
                 except Exception:
                     print 'Elastic Search Server Not Available'
                     time.sleep(1)

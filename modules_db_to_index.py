@@ -32,7 +32,7 @@ class ModulesIndexer(ModulesUpdaterBase):
 
 if __name__ == "__main__":
     new_ind = 'new' in sys.argv
-    new_ind = True
+    #new_ind = True
     LIMIT = None
     u = ModulesIndexer()
     u.main(new_ind, LIMIT)

@@ -30,7 +30,7 @@ class ESIndex():
 
     @retry_on_exceptions(types=[Exception], tries=3, delay=5)
     def add_module(self, module_info, source_files=[]):
-        _id = str(module_info['_id'])
+        mid = str(module_info['_id'])
         doc = dict(source_files=source_files)
         for field in ['owner', 'module_name', 'description', 'language', 'watchers']:
             if 'watchers' == field:
@@ -38,7 +38,7 @@ class ESIndex():
             else:
                 doc[field] = module_info[field]
 
-        res = self.conn.index(doc, self.index_name, self.doc_type, _id)
+        res = self.conn.index(doc, self.index_name, self.doc_type, mid)
         return res and 'ok' in res and res['ok']
 
     @retry_on_exceptions(types=[Exception], tries=3, delay=5)

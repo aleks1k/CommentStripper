@@ -95,7 +95,7 @@ class CommentsMain():
         for p in self.procs:
             spend_time = curr_time - p.get_time()
             if spend_time > self.proc_timeout:
-                self.logger.warn('Kill parser process %d by timeout %d', p.id, spend_time)
+                self.logger.warn('Kill parser process %d by timeout %d', p.process_id, spend_time)
                 p.kill()
                 self.procs.remove(p)
                 self.start_process(p.process_id)

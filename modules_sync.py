@@ -119,20 +119,20 @@ class ModulesSync(ModulesUpdaterBase):
             if self.p:
                 while self.p.files_query.qsize() > 0:
                     time.sleep(3)
-                    self.p.check_procs()
+                    self.p.check_process_timeout()
             res = self.es.add_module_from_mongo(module_info, self.db[config.DB_COMMENTS_COLLECTION], diff_res)
             if res:
                 if diff_res:
                     updates = self.db['module_updates']
                     updates.remove(ObjectId(module_id))
             print '\n\tDone!'
-            if num % 100 == 0:
-                with open(os.path.join(config.LOG_PATH, 'ext_stat.%d.log' % self.start_time), 'w') as stat_log:
-                    ext_list = []
-                    for (ext, ecount) in self.p.ext_stat.items():
-                        ext_list.append((ext, ecount))
-
-                    pprint(sorted(ext_list, key=lambda x: x[1], reverse=True), stat_log)
+            # if num % 100 == 0:
+            #     with open(os.path.join(config.LOG_PATH, 'ext_stat.%d.log' % self.start_time), 'w') as stat_log:
+            #         ext_list = []
+            #         for (ext, ecount) in self.p.ext_stat.items():
+            #             ext_list.append((ext, ecount))
+            #
+            #         pprint(sorted(ext_list, key=lambda x: x[1], reverse=True), stat_log)
         else:
             print 'Repo not found'
 

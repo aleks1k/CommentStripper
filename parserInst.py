@@ -13,9 +13,10 @@ from elastic_search import ESIndex
 __author__ = 'Alexey'
 
 class Parser():
-    def __init__(self, id):
-        self.id = id
-        self.logger = logging.getLogger('parser.%d' % id)
+    def __init__(self, process_id):
+        self.process_id = process_id
+        logging.disable(logging.CRITICAL)
+        self.logger = logging.getLogger('parser.%d' % process_id)
         mongoConn = pymongo.MongoClient(config.DB_HOST, 27017)
         self.logger.info('Connect to mongo db: %s', config.DB_HOST)
         db = mongoConn[config.DB_NAME]
@@ -39,15 +40,15 @@ class Parser():
             self.curr_module_ = module
             return module
 
-    def main(self, files_query, last_time, es_lock):
-        last_time_f = float(last_time.value)
+    def main(self, files_query, last_time):
+        # last_time_f = float(last_time.value)
         self.logger.info('Parser started')
-        time_interval_indexing = 0
+        # time_interval_indexing = 0
         # results = []
-        last_comment_count = 0
+        # last_comment_count = 0
         while True:
             curr_time = time.time()
-            time_interval = (curr_time - last_time_f)
+            # time_interval = (curr_time - last_time_f)
             last_time_f = curr_time
             with last_time.get_lock():
                 last_time.value = int(last_time_f)
@@ -68,22 +69,22 @@ class Parser():
                         file_name = os.path.sep.join(res[self.root_len + 2:])
                         # file_name = self.file_name
                         result = dict(file_name=file_name, file_type=ext, comments=comments)
-                        last_time_indexing = time.time()
+                        # last_time_indexing = time.time()
                         # if len(results) > 10:
                         #     self.es.add_to_index(results, module, bulk=True)
                         #     results = []
                         # with es_lock:
                         self.es.add_comments_form_file_to_mongo(self.comments, mid, result)
-                        time_interval_indexing = (time.time() - last_time_indexing)
+                        # time_interval_indexing = (time.time() - last_time_indexing)
                     else:
                         self.logger.error('Module not found, id: %s', mid)
             except QueueEmptyException:
                 pass
 
-def proc_main(q, v=multiprocessing.Value('i', int(time.time())), id=0, es_lock=None):
-    logging.basicConfig(filename=os.path.join(config.LOG_PATH, 'parser.%d.%d.log' % (id, v.value)), level=logging.INFO)
-    p = Parser(id)
-    p.main(q, v, es_lock)
+def proc_main(q, v=multiprocessing.Value('i', int(time.time())), process_id=0):
+    # logging.basicConfig(filename=os.path.join(config.LOG_PATH, 'parser.%d.%d.log' % (id, v.value)), level=logging.INFO)
+    p = Parser(process_id)
+    p.main(q, v)
 
 if __name__ == "__main__":
     q = multiprocessing.Queue()

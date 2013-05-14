@@ -33,12 +33,19 @@ class ESIndex():
     def add_module(self, module_info, source_files=[]):
         mid = str(module_info['_id'])
         doc = dict(source_files=source_files)
-        # for field in ['owner', 'module_name', 'description', 'language', 'watchers']:
-        #     if 'watchers' == field:
-        #         doc['stars'] = module_info[field]
-        #     else:
-        #         doc[field] = module_info[field]
+        for field in ['owner', 'module_name', 'description', 'language', 'watchers']:
+            if 'watchers' == field:
+                doc['stars'] = module_info[field]
+            else:
+                doc[field] = module_info[field]
 
+        res = self.conn.index(doc, self.index_name, self.doc_type, mid)
+        return res and 'ok' in res and res['ok']
+
+    @retry_on_exceptions(types=[Exception], tries=3, delay=5)
+    def update_module_source_files(self, module_info, source_files=[]):
+        mid = str(module_info['_id'])
+        doc = dict(source_files=source_files)
         res = self.conn.update(doc, self.index_name, self.doc_type, mid)
         return res and 'ok' in res and res['ok']
 
@@ -102,7 +109,7 @@ class ESIndex():
             while True:
                 try:
                     if i == 0:
-                       self.add_module(module_info, source_files)
+                       self.update_module_source_files(module_info, source_files)
                     else:
                         self.update_part(module_info, source_files)
                     break

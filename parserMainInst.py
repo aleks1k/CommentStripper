@@ -60,14 +60,14 @@ class CommentsMain():
                     self.add_ext(ext)
                     if ext in self.ignore_types:
                         continue
+                    self.files_count += 1
                     if not stop_walk:
                         self.add_file(os.path.join(current, file))
-                    self.files_count += 1
-                    if self.files_count % 100 == 0:
-                        print '.',
-                        if self.check_files_limit():
-                            stop_walk = True
-                            # break
+                        if self.files_count % 100 == 0:
+                            print '.',
+                            if self.check_files_limit():
+                                stop_walk = True
+                                # break
             # if stop_walk:
             #     break
         self.logger.info('Files count %d', self.files_count)

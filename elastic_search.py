@@ -1,4 +1,5 @@
 import os
+from pyes.exceptions import NoServerAvailable, ElasticSearchException
 import pymongo
 from retry import retry_on_exceptions
 import config
@@ -32,13 +33,13 @@ class ESIndex():
     def add_module(self, module_info, source_files=[]):
         mid = str(module_info['_id'])
         doc = dict(source_files=source_files)
-        for field in ['owner', 'module_name', 'description', 'language', 'watchers']:
-            if 'watchers' == field:
-                doc['stars'] = module_info[field]
-            else:
-                doc[field] = module_info[field]
+        # for field in ['owner', 'module_name', 'description', 'language', 'watchers']:
+        #     if 'watchers' == field:
+        #         doc['stars'] = module_info[field]
+        #     else:
+        #         doc[field] = module_info[field]
 
-        res = self.conn.index(doc, self.index_name, self.doc_type, mid)
+        res = self.conn.update(doc, self.index_name, self.doc_type, mid)
         return res and 'ok' in res and res['ok']
 
     @retry_on_exceptions(types=[Exception], tries=3, delay=5)
@@ -100,15 +101,22 @@ class ESIndex():
             print '-',
             while True:
                 try:
-#                    if i == 0:
-#                        self.add_module(module_info, source_files)
-#                    else:
-                    self.update_part(module_info, source_files)
+                    if i == 0:
+                       self.add_module(module_info, source_files)
+                    else:
+                        self.update_part(module_info, source_files)
                     break
-                except Exception:
+                except KeyboardInterrupt:
+                    raise
+                except (NoServerAvailable, ElasticSearchException):
                     print 'Elastic Search Server Not Available'
-                    time.sleep(1)
+                    logger.error('Elastic Search Server Not Available')
+                    time.sleep(5)
                     self.connect()
+                # except Exception:
+                #     print 'Elastic Search Server Not Available'
+                #     time.sleep(1)
+                #     self.connect()
 
 import unittest
 from bson import ObjectId

@@ -8,6 +8,7 @@ class CommentsMain():
     queue_limit = 100
     proc_timeout = 30
     ignore_dirs = ['.git', '.idea']
+    ignore_types = ['png', 'gif', 'wav', 'jpg']
     processes_count = 10
 
     def __init__(self):
@@ -39,7 +40,12 @@ class CommentsMain():
     def check_files_limit(self):
         stats = self.db.command('collStats', config.DB_COMMENTS_COLLECTION)
         files_with_comments_count = stats['size']
-        return files_with_comments_count > config.COMMENTS_PARSE_MAXCOMMENTS_SIZE
+        if files_with_comments_count > config.COMMENTS_PARSE_MAXCOMMENTS_SIZE:
+            self.logger.warn('Comments Size Limit, %d bytes', files_with_comments_count)
+            print 'Size Limit!'
+            return True
+        else:
+            return False
 
     def getFiles(self, dir_path):
         '''Takes the dictionary of filepaths and tags and returns a list of
@@ -52,15 +58,19 @@ class CommentsMain():
                 for file in files:
                     ext = os.path.splitext(file)[1][1:].lower()
                     self.add_ext(ext)
-                    self.add_file(os.path.join(current, file))
+                    if ext in self.ignore_types:
+                        continue
+                    if not stop_walk:
+                        self.add_file(os.path.join(current, file))
                     self.files_count += 1
                     if self.files_count % 100 == 0:
                         print '.',
                         if self.check_files_limit():
                             stop_walk = True
-                            break
-            if stop_walk:
-                break
+                            # break
+            # if stop_walk:
+            #     break
+        self.logger.info('Files count %d', self.files_count)
 
     def start_process(self, id):
         start_time = multiprocessing.Value('i', int(time.time()))

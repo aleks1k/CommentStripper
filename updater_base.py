@@ -65,8 +65,9 @@ class ModulesUpdaterBase():
             mid = dict(user=module['owner'], repo=module['module_name'])
             module_num += 1
             repo_name = '%(user)s/%(repo)s' % mid
-            self.logger.info('Module %s', repo_name)
-            print '(%d/%d)' % (module_num, mcount), repo_name
+            logstr = '(%d/%d) %s' % (module_num, mcount, repo_name)
+            self.logger.info('Module %s', logstr)
+            print logstr
             self.update_module(module_num, module)
             with open(pcl_file_name, 'wb') as pcl_file:
                 pickle.dump(module_num, pcl_file)
@@ -77,6 +78,9 @@ class ModulesUpdaterBase():
         while True:
             try:
                 self.run(new_ind, limit)
+                break
+            except KeyboardInterrupt:
+                print 'User Cancel'
                 break
             except:
                 traceback.print_exc()

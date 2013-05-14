@@ -87,7 +87,7 @@ class ModulesSync(ModulesUpdaterBase):
 
     def clear_index(self):
         print 'Create Index'
-        self.es.create_index()
+        # self.es.create_index()
         self.db.drop_collection('module_updates')
 
     def update_module(self, num, module_info):

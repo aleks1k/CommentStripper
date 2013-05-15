@@ -37,7 +37,8 @@ class CommentDictionary:
         else:
             self.pattern_stat[self.curr_regexp] = (t, 1, comments_count)
 
-    def __init__(self):
+    def __init__(self, collect_statistics=False):
+        self.collect_statistics = collect_statistics
         cstyle = CommentDef(r'/\*(.*?)\*/', r'//(.*)', "*")
         python = CommentDef(r'[\']{3}(.*?)[\']{3}', r'#+(.*)')
         perl = CommentDef(r'=begin(.*?)=cut', r'#+(.*)')
@@ -93,7 +94,7 @@ class CommentDictionary:
                 buff_size = 0
             if lineRegex:
                 # parse Inline Comments
-                self.start_re_search(lineRegex.pattern, path)
+                if self.collect_statistics: self.start_re_search(lineRegex.pattern, path)
                 for line in corpus:
                     line_size = len(line)
                     if line_size > 2:
@@ -108,8 +109,9 @@ class CommentDictionary:
                                     c = gr.strip()
                                     if len(c) != 0:
                                         allComments.append(c)
-                lineRegex_comments_count = len(allComments)
-                self.end_re_search(len(allComments))
+                if self.collect_statistics:
+                    lineRegex_comments_count = len(allComments)
+                    self.end_re_search(len(allComments))
 
             if blockRegex:
                 # Second time read file from buffer
@@ -120,14 +122,14 @@ class CommentDictionary:
                     corpus.seek(0)
                     buff = corpus
                     # parse Block Comments
-                self.start_re_search(blockRegex.pattern, path)
+                if self.collect_statistics: self.start_re_search(blockRegex.pattern, path)
                 results = blockRegex.finditer(buff.read())
                 for result in results:
                     if result.lastindex >= 1:
                         res = result.group(1)
                         if len(res) != 0:
                             allComments.append(res)
-                self.end_re_search(len(allComments) - lineRegex_comments_count)
+                if self.collect_statistics: self.end_re_search(len(allComments) - lineRegex_comments_count)
         return allComments
 
     def parseAllComments(self, path, file_type=None):
@@ -172,17 +174,15 @@ class CommentDictionary:
 
 def test_big_file():
     from pprint import pprint
-    files = [r'\repo\github\joyent\node\deps\npm\lib\outdated.js',
-    'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\second.css',
-    'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\fourth.css',
-               ]
+    files = [
+        r'\repo\github\joyent\node\deps\npm\lib\outdated.js',
+        'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\second.css',
+        'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\fourth.css',
+    ]
     c = CommentDictionary()
     for f in files:
         # c.parseFile(f, re.compile(r'([/]{2})(.*)'), re.compile(r'(/\*)(.*?)\*/', re.DOTALL))
         pprint(c.parseAllComments(f))
-    # print c.parseFile(bigcss, re.compile(r'([/]{2})(.*)'), re.compile(r'(/\*)((.|\r|\n)*?)(?=\*/)'))
-    # print c.parseFile(smallcss, re.compile(r'([/]{2})(.*)'), re.compile(r'(/\*)((.|\r|\n)*?)(?=\*/)'))
-    # print c.parseAllComments(smallcss)
 
 def main():
     test_big_file()

@@ -3,16 +3,12 @@ import os
 from pprint import pprint
 import sys
 import time
-import traceback
-from bson import ObjectId
-import git
 import comment_def
 import config
+from updater_base import ModulesUpdaterBase
+from elastic_search import ESIndex
 
 __author__ = 'Alexey'
-from updater_base import ModulesUpdaterBase
-from parserMainInst import CommentsMain
-from elastic_search import ESIndex
 
 class ParseComments(ModulesUpdaterBase):
     name = 'ParseComments'
@@ -24,10 +20,10 @@ class ParseComments(ModulesUpdaterBase):
         self.ext_stat = dict()
         self.files_count = 0
         self.comments_store = dict()
-        self.comments_parser = comment_def.CommentDictionary()
+        self.comments_parser = comment_def.CommentDictionary(collect_statistics=True)
         self.root_len = len(os.path.normcase(config.GITHUB_REPOS_CLONE_PATH[0]).split(os.path.sep)) #FIXME repo root dirs may have different len
 
-        # self.es = ESIndex()
+        self.es = ESIndex()
         if new_ind: self.clear_index()
 
     def add_ext(self, ext):
@@ -41,10 +37,11 @@ class ParseComments(ModulesUpdaterBase):
         return dirname not in self.ignore_dirs
 
     def add_comments(self, mid, comments):
-        if mid in self.comments_store:
-            self.comments_store[mid].append(comments)
-        else:
-            self.comments_store[mid] = [comments]
+        self.comments_store.append(comments)
+        # if mid in self.comments_store:
+        #     self.comments_store[mid].append(comments)
+        # else:
+        #     self.comments_store[mid] = [comments]
 
     def add_file(self, f, ext):
         file_path = os.path.normcase(f)
@@ -106,7 +103,7 @@ class ParseComments(ModulesUpdaterBase):
         print '\tparsing',
         repo_dir_exist, path = self.check_repo_dir_exist(module_info)
         if repo_dir_exist:
-            module_id = str(module_info['_id'])
+            mid = str(module_info['_id'])
             self.curr_module = module_info
             # doc = self.es.is_module_in_index(module_id)
             diff_res = None
@@ -118,10 +115,10 @@ class ParseComments(ModulesUpdaterBase):
             #                 if self.p:
             #                     self.p.add_file(os.path.join(path, filename))
             # else:
-            # self.comments_store = dict() #clear store
+            self.comments_store = [] #clear store
             self.getFiles(path)
 
-            # res = self.es.add_module_from_mongo(module_info, self.db[config.DB_COMMENTS_COLLECTION], diff_res)
+            res = self.es.add_module_from_dict(module_info, self.comments_store, diff_res)
             # if res:
             #     if diff_res:
             #         updates = self.db['module_updates']
@@ -156,8 +153,8 @@ class ParseComments(ModulesUpdaterBase):
 
 if __name__ == "__main__":
     new_ind = 'new' in sys.argv
-    new_ind = True
-    LIMIT = 100
+    # new_ind = True
+    LIMIT = None
     u = ParseComments()
     logging.basicConfig(filename=os.path.join(config.LOG_PATH, '%s.%d.log' % (u.name, int(time.time()))), filemode='w', level=logging.INFO)
     u.main(new_ind, LIMIT)

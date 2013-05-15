@@ -92,6 +92,38 @@ class ESIndex():
         res = self.conn.update(doc, self.index_name, self.doc_type, module_info['_id'])
         return res and 'ok' in res and res['ok']
 
+    def add_module_from_dict(self, module_info, collect, diff_res=None):
+        files_count = len(collect)
+        print '\n\tindexing %d files' % files_count,
+        logger.info('start indexing %d files' % files_count)
+        if files_count == 0:
+            return True
+        # if diff_res:
+        #     print 'update'
+        #     return self.update_module(module_info, collect, diff_res)
+        limit = 5000
+        for i in range(0, files_count, limit):
+            if i == 0 and limit > files_count:
+                source_files = collect
+            else:
+                source_files = collect[i:(i + limit)]
+            print '-',
+            while True:
+                try:
+                    if i == 0:
+                        # self.add_module(module_info, source_files)
+                        self.update_module_source_files(module_info, source_files)
+                    else:
+                        self.update_part(module_info, source_files)
+                    break
+                except KeyboardInterrupt:
+                    raise
+                except NoServerAvailable:#, ElasticSearchException):
+                    print 'Elastic Search Server Not Available'
+                    logger.error('Elastic Search Server Not Available')
+                    time.sleep(5)
+                    self.connect()
+
 
     def add_module_from_mongo(self, module_info, collect, diff_res=None):
         files_count = collect.count()

@@ -5,6 +5,7 @@ import sys
 import time
 import comment_def
 import config
+import traceback
 from updater_base import ModulesUpdaterBase
 from elastic_search import ESIndex
 
@@ -20,13 +21,14 @@ class ParseComments(ModulesUpdaterBase):
         self.ext_stat = dict()
         self.files_count = 0
         self.comments_store = dict()
-        self.comments_parser = comment_def.CommentDictionary(collect_statistics=True)
+        self.comments_parser = comment_def.CommentDictionary(collect_statistics=False)
         self.root_len = len(os.path.normcase(config.GITHUB_REPOS_CLONE_PATH[0]).split(os.path.sep)) #FIXME repo root dirs may have different len
 
         self.es = ESIndex()
         if new_ind: self.clear_index()
 
     def add_ext(self, ext):
+        return
         if ext in self.ext_stat.keys():
             self.ext_stat[ext] += 1
         else:
@@ -88,11 +90,16 @@ class ParseComments(ModulesUpdaterBase):
                         continue
                     self.files_count += 1
                     if not stop_walk:
-                        self.add_file(os.path.join(current, file_path), ext)
+                        try:
+                            self.add_file(os.path.join(current, file_path), ext)
+                        except:
+                            traceback.print_exc()
+                            self.logger.error(traceback.format_exc())
+                            print 'Fail %s' % file_path
                         if self.files_count % 100 == 0:
                             print '.',
-                            if self.check_files_limit():
-                                stop_walk = True
+                            #if self.check_files_limit():
+                            #    stop_walk = True
         self.logger.info('Files count %d', self.files_count)
 
     def clear_index(self):

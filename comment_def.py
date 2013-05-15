@@ -176,8 +176,8 @@ def test_big_file():
     from pprint import pprint
     files = [
         r'\repo\github\joyent\node\deps\npm\lib\outdated.js',
-        'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\second.css',
-        'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\fourth.css',
+        r'\repo\github\adobe\brackets\test\spec\ExtensionUtils-test-files\sub dir\second.css',
+        r'\repo\github\adobe\brackets\test\spec\ExtensionUtils-test-files\sub dir\fourth.css',
     ]
     c = CommentDictionary()
     for f in files:

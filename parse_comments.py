@@ -4,17 +4,14 @@ from pprint import pprint
 import sys
 import time
 import comment_def
-import config
 import traceback
-from updater_base import ModulesUpdaterBase
-from elastic_search import ESIndex
 
 __author__ = 'Alexey'
 
 class ParseComments():
     ignore_dirs = ['.git', '.idea']
     ignore_types = ['png', 'gif', 'wav', 'jpg']
-    collect_statistic = True
+    collect_statistic = False # Set True for collect statistic for file types and parse time
 
     def __init__(self):
         self.comments_parser = comment_def.CommentDictionary(collect_statistics=self.collect_statistic)
@@ -87,37 +84,13 @@ class ParseComments():
             ext_list.append((ext, ecount))
         pprint(sorted(ext_list, key=lambda x: x[1], reverse=True))
 
-class ParseModuleComments(ModulesUpdaterBase):
-    name = 'ParseComments'
-
-    def init(self, new_ind):
-        # self.root_len = len(os.path.normcase(config.GITHUB_REPOS_CLONE_PATH[0]).split(os.path.sep)) #FIXME repo root dirs may have different len
-        self.parser = ParseComments()
-        self.es = ESIndex()
-        if new_ind: self.clear_index()
-
-    def clear_index(self):
-        print 'Create Index'
-        # self.es.create_index()
-
-    def update_module(self, num, module_info):
-        # print '\tparsing',
-        repo_dir_exist, path = self.check_repo_dir_exist(module_info)
-        if repo_dir_exist:
-            comments = self.parser.parse_dir(path)
-            res = self.es.add_module_from_dict(module_info, comments)
-            print '\n\tDone!'
-        else:
-            print 'Repo not found'
-
-    def final(self):
-        self.parser.print_statistics()
-
 if __name__ == "__main__":
-    new_ind = 'new' in sys.argv
-    new_ind = True
-    LIMIT = 5
-    u = ParseModuleComments()
-    logging.basicConfig(filename=os.path.join(config.LOG_PATH, '%s.%d.log' % (u.name, int(time.time()))), filemode='w', level=logging.INFO)
-    u.main(new_ind, LIMIT)
-    u.final()
+    parser = ParseComments()
+    # logging.basicConfig(filename=os.path.join('/repo/logs', '%s.%d.log' % ('ParseComments', int(time.time()))), filemode='w', level=logging.INFO)
+    dirs = ['/repo/github/diaspora/diaspora', '/repo/github/django/django']
+    for d in dirs:
+        comments = parser.parse_dir(d)
+        pprint(comments)
+
+    print 'Statictics\n'
+    parser.print_statistics()

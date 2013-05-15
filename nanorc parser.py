@@ -20,12 +20,12 @@ patterns = [syntax_patern, line_comment_patern, block_comment_patern, template_c
 comment_styles = {
     'C':
         {
-            'block_pattern': r'(/\*)((.|\r|\n)*?)(?=\*/)',
-            'line_pattern': r'([/]{2})(.*)'
+            'block_pattern': r'/\*(.*?)\*/',
+            'line_pattern': r'//(.*)'
         },
     'HASH':
         {
-            'line_pattern': r'(#)+(.*)'
+            'line_pattern': r'#+(.*)'
         },
 }
 
@@ -52,7 +52,7 @@ def parse_rc(path):
                     elif pattern == block_comment_patern:
                         start = result.group(1)
                         stop = result.group(2)
-                        block_regexp = r'(%s)((.|[\r\n])*?)(?=%s)' % (start, stop)
+                        block_regexp = r'%s(.*?)%s' % (start, stop)
                         res['block_pattern'].append(block_regexp)
                         print '\tblock_comment\t', start, '===', stop, '-------', block_regexp
                     elif pattern == template_comment_patern:

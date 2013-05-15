@@ -3,8 +3,10 @@
 #feedback is welcome
 import StringIO
 import codecs
+import logging
 import os
 import re
+import time
 from nanorc import nanorc
 
 
@@ -12,19 +14,36 @@ class CommentDef:
     def __init__(self, blockRegex, lineRegex, blockContinuation=""):
         self.blockRegexStr = blockRegex
         self.lineRegexStr = lineRegex
-        self.blockRegex = re.compile(self.blockRegexStr)
+        self.blockRegex = re.compile(self.blockRegexStr, re.DOTALL)
         self.lineRegex = re.compile(self.lineRegexStr)
         self.blockContinuation = blockContinuation
 
 
 class CommentDictionary:
+    curr_regexp = None
+    pattern_stat = dict()
+
+    def start_re_search(self, pattern, path):
+        self.curr_regexp = pattern
+        logging.info('start search block pattern %s in file %s', self.curr_regexp, path)
+        self.start_time = time.time()
+
+    def end_re_search(self, comments_count):
+        t = time.time() - self.start_time
+        # logging.info('end search %f', t)
+        st = self.pattern_stat.get(self.curr_regexp)
+        if st:
+            self.pattern_stat[self.curr_regexp] = (st[0] + t, st[1] + 1, st[2] + comments_count)
+        else:
+            self.pattern_stat[self.curr_regexp] = (t, 1, comments_count)
+
     def __init__(self):
-        cstyle = CommentDef(r'(/\*)((.|\r|\n)*?)(?=\*/)', r'([/]{2})(.*)', "*")
-        python = CommentDef(r'([\']{3})((.|\r|\n)*?)(?=([\']{3}))', r'(#)+(.*)')
-        perl = CommentDef(r'(=begin)((.|\r|\n)*?)(?=(=cut))', r'(#)+(.*)')
-        ruby = CommentDef(r'(=begin)((.|\r|\n)*?)(?=(=end))', r'(#)+(.*)')
-        lisp = CommentDef(r'(#\|)((.|\r|\n)*?)(?=(\|#))', r'(;)+(.*)')
-        powershell = CommentDef(r'(<#)((.|\r|\n)*?)(?=(>#))', r'(#)+(.*)')
+        cstyle = CommentDef(r'/\*(.*?)\*/', r'//(.*)', "*")
+        python = CommentDef(r'[\']{3}(.*?)[\']{3}', r'#+(.*)')
+        perl = CommentDef(r'=begin(.*?)=cut', r'#+(.*)')
+        ruby = CommentDef(r'=begin(.*?)=end', r'#+(.*)')
+        lisp = CommentDef(r'#\|(.*?)\|#', r';+(.*)')
+        powershell = CommentDef(r'<#(.*?)>#', r'#+(.*)')
         # text = CommentDef(r'', r'')
         #All block comment should be indicated such that the closing
         #element of the comment is in a lookahead assertion to allow
@@ -32,7 +51,7 @@ class CommentDictionary:
 
         style_ext = [
             (['c', 'js', 'json', 'h', 'cc', 'cpp', 'hpp', 'cs', 'java', 'as', 'd', 'go', 'scala',
-              'php', 'phtml', 'php4', 'php3', 'php5', 'phps'], cstyle),
+              'php', 'phtml', 'php4', 'php3', 'php5', 'phps', 'css', 'scss', 'sass', 'less'], cstyle),
             (['md', 'txt'], None) # text
         ]
 
@@ -59,12 +78,13 @@ class CommentDictionary:
                 for l in drc['line_pattern']:
                     rc['line_regex'].append(re.compile(l))
                 for b in drc['block_pattern']:
-                    rc['block_regex'].append(re.compile(b))
+                    rc['block_regex'].append(re.compile(b, re.DOTALL))
 
-    @staticmethod
-    def parseFile(path, lineRegex=None, blockRegex = None):
+    # @staticmethod
+    def parseFile(self, path, lineRegex=None, blockRegex = None):
         buff_limit = 512 * 1024
         allComments = []
+        lineRegex_comments_count = 0
         # if os.path.getsize(path) > self.buff_limit:
         #     return []
         with codecs.open(path, 'r', 'utf-8', errors='ignore') as corpus:
@@ -73,20 +93,23 @@ class CommentDictionary:
                 buff_size = 0
             if lineRegex:
                 # parse Inline Comments
+                self.start_re_search(lineRegex.pattern, path)
                 for line in corpus:
                     line_size = len(line)
                     if line_size > 2:
                         if blockRegex and buff_size < buff_limit:
                             file_buff.write(line)
                             buff_size += line_size
-                        result = lineRegex.match(line)
+                        result = lineRegex.search(line)
                         if result:
-                            if result.lastindex >= 2:
-                                gr = result.group(2)
+                            if result.lastindex >= 1:
+                                gr = result.group(1)
                                 if gr:
                                     c = gr.strip()
                                     if len(c) != 0:
                                         allComments.append(c)
+                lineRegex_comments_count = len(allComments)
+                self.end_re_search(len(allComments))
 
             if blockRegex:
                 # Second time read file from buffer
@@ -97,13 +120,14 @@ class CommentDictionary:
                     corpus.seek(0)
                     buff = corpus
                     # parse Block Comments
+                self.start_re_search(blockRegex.pattern, path)
                 results = blockRegex.finditer(buff.read())
                 for result in results:
-                    if result.lastindex >= 2:
-                        res = result.group(2)
+                    if result.lastindex >= 1:
+                        res = result.group(1)
                         if len(res) != 0:
                             allComments.append(res)
-
+                self.end_re_search(len(allComments) - lineRegex_comments_count)
         return allComments
 
     def parseAllComments(self, path, file_type=None):
@@ -147,12 +171,18 @@ class CommentDictionary:
         return allComments
 
 def test_big_file():
-    bigcss = 'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\second.css'
-    smallcss = 'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\fourth.css'
+    from pprint import pprint
+    files = [r'\repo\github\joyent\node\deps\npm\lib\outdated.js',
+    'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\second.css',
+    'D:\\repo\\github\\adobe\\brackets\\test\\spec\\ExtensionUtils-test-files\\sub dir\\fourth.css',
+               ]
     c = CommentDictionary()
+    for f in files:
+        # c.parseFile(f, re.compile(r'([/]{2})(.*)'), re.compile(r'(/\*)(.*?)\*/', re.DOTALL))
+        pprint(c.parseAllComments(f))
     # print c.parseFile(bigcss, re.compile(r'([/]{2})(.*)'), re.compile(r'(/\*)((.|\r|\n)*?)(?=\*/)'))
-    print c.parseFile(smallcss, re.compile(r'([/]{2})(.*)'), re.compile(r'(/\*)((.|\r|\n)*?)(?=\*/)'))
-    print c.parseAllComments(smallcss)
+    # print c.parseFile(smallcss, re.compile(r'([/]{2})(.*)'), re.compile(r'(/\*)((.|\r|\n)*?)(?=\*/)'))
+    # print c.parseAllComments(smallcss)
 
 def main():
     test_big_file()

@@ -12,11 +12,11 @@ mapping = {
         {
             'owner': {
                 'type': 'string',
-                'analyzer': 'suggest_analyzer',
+                # 'analyzer': 'suggest_analyzer',
                 },
             'module_name': {
                 'type': 'string',
-                'analyzer': 'suggest_analyzer',
+                # 'analyzer': 'suggest_analyzer',
                 },
             'description': {
                 'type': 'string',

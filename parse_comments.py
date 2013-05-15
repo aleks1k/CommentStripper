@@ -13,6 +13,9 @@ class ParseComments():
     ignore_types = ['png', 'gif', 'wav', 'jpg']
     collect_statistic = False # Set True for collect statistic for file types and parse time
 
+    files_limit = 0
+    return_comments_callback = None
+
     def __init__(self):
         self.comments_parser = comment_def.CommentDictionary(collect_statistics=self.collect_statistic)
         self.comments_store = dict()
@@ -32,6 +35,10 @@ class ParseComments():
 
     def add_comments(self, comments):
         self.comments_store.append(comments)
+        if self.files_limit and len(self.comments_store) >= self.files_limit:
+            if self.return_comments_callback:
+                self.return_comments_callback(self.comments_store)
+            self.comments_store = []
 
     def add_file(self, file_path, ext):
         comments = self.comments_parser.parseAllComments(file_path, ext)
@@ -67,6 +74,8 @@ class ParseComments():
         logging.info('Files count %d', self.files_count)
 
     def parse_dir(self, directory):
+        self.files_limit = 0
+        self.return_comments_callback = None
         print '\tparsing',
         if os.path.exists(directory):
             self.root_len = len(os.path.normcase(directory).split(os.path.sep))
@@ -76,6 +85,21 @@ class ParseComments():
         else:
             print 'Repo not found'
         return []
+
+    def parse_dir_partly(self, directory, files_limit, callback):
+        self.files_limit = files_limit
+        self.return_comments_callback = callback
+        print '\tparsing',
+        if os.path.exists(directory):
+            self.root_len = len(os.path.normcase(directory).split(os.path.sep))
+            self.comments_store = [] #clear store
+            self.getFiles(directory)
+            self.return_comments_callback(self.comments_store)
+            return True
+        else:
+            print 'Repo not found'
+        return False
+
 
     def print_statistics(self):
         pprint(self.comments_parser.pattern_stat)

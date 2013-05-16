@@ -8,6 +8,9 @@ import traceback
 
 __author__ = 'Alexey'
 
+class CallBackException(Exception):
+    pass
+
 class ParseComments():
     ignore_dirs = ['.git', '.idea']
     ignore_types = ['png', 'gif', 'wav', 'jpg']
@@ -19,6 +22,7 @@ class ParseComments():
     def __init__(self):
         self.comments_parser = comment_def.CommentDictionary(collect_statistics=self.collect_statistic)
         self.comments_store = dict()
+        self.comments_store_size = 0
         self.files_count = 0
         self.ext_stat = dict()
 
@@ -33,12 +37,25 @@ class ParseComments():
         dirname = os.path.split(d)[-1]
         return dirname not in self.ignore_dirs
 
+    def get_comments_size(self, comments):
+        comments_size = 0
+        for c in comments['comments']:
+            comments_size += len(c)
+        return comments_size
+
     def add_comments(self, comments):
         self.comments_store.append(comments)
-        if self.files_limit and len(self.comments_store) >= self.files_limit:
+        self.comments_store_size += self.get_comments_size(comments)
+        res = True
+        if (self.files_limit and len(self.comments_store) >= self.files_limit) or (self.size_limit and self.comments_store_size > self.size_limit):
             if self.return_comments_callback:
-                self.return_comments_callback(self.comments_store)
+                try:
+                    res = self.return_comments_callback(self.comments_store, self.comments_store_size)
+                except:
+                    raise CallBackException()
             self.comments_store = []
+            self.comments_store_size = 0
+        return res
 
     def add_file(self, file_path, ext):
         comments = self.comments_parser.parseAllComments(file_path, ext)
@@ -47,13 +64,14 @@ class ParseComments():
             res = file_path.split(os.path.sep)
             file_name = os.path.sep.join(res[self.root_len:])
             result = dict(file_name=file_name, file_type=ext, comments=comments)
-            self.add_comments(result)
+            return self.add_comments(result)
+        return True
 
     def getFiles(self, dir_path):
         '''Takes the dictionary of filepaths and tags and returns a list of
         all files in the associated directories'''
         self.files_count = 0
-        for (current, dirs, files) in os.walk(dir_path):
+        for (current, dirs, files) in os.walk(str(dir_path)):
             dirs[:] = filter(self.filter_dir, dirs)
             if not len(files):
                 continue
@@ -64,7 +82,10 @@ class ParseComments():
                     continue
                 self.files_count += 1
                 try:
-                    self.add_file(os.path.join(current, file_path), ext)
+                    if not self.add_file(os.path.join(current, file_path), ext):
+                        return
+                except (KeyboardInterrupt, CallBackException):
+                    raise
                 except:
                     traceback.print_exc()
                     logging.error(traceback.format_exc())
@@ -75,26 +96,30 @@ class ParseComments():
 
     def parse_dir(self, directory):
         self.files_limit = 0
+        self.size_limit = 0
         self.return_comments_callback = None
         print '\tparsing',
         if os.path.exists(directory):
             self.root_len = len(os.path.normcase(directory).split(os.path.sep))
             self.comments_store = [] #clear store
+            self.comments_store_size = 0
             self.getFiles(directory)
             return self.comments_store
         else:
             print 'Repo not found'
         return []
 
-    def parse_dir_partly(self, directory, files_limit, callback):
+    def parse_dir_partly(self, directory, callback, files_limit = 0, size_limit = 0):
         self.files_limit = files_limit
+        self.size_limit = size_limit
         self.return_comments_callback = callback
         print '\tparsing',
         if os.path.exists(directory):
             self.root_len = len(os.path.normcase(directory).split(os.path.sep))
             self.comments_store = [] #clear store
+            self.comments_store_size = 0
             self.getFiles(directory)
-            self.return_comments_callback(self.comments_store)
+            self.return_comments_callback(self.comments_store, self.comments_store_size)
             return True
         else:
             print 'Repo not found'
